@@ -47,8 +47,40 @@ export default function AdminShell({ children }: AdminShellProps) {
           .eq('id', user.id)
           .single();
 
-        if (profile) {
-          setUserProfile(profile as User);
+        let finalProfile = profile as User | null;
+
+        // Force superadmin@hazel.lk and admin@hazel.com to correct roles locally in frontend shell
+        if (user.email === 'superadmin@hazel.lk') {
+          finalProfile = {
+            id: user.id,
+            name: profile?.name || 'Super Admin',
+            email: user.email,
+            role: 'Super Admin',
+            is_active: true,
+            created_at: profile?.created_at || new Date().toISOString()
+          };
+        } else if (user.email === 'admin@hazel.com') {
+          finalProfile = {
+            id: user.id,
+            name: profile?.name || 'Admin',
+            email: user.email,
+            role: 'Admin',
+            is_active: true,
+            created_at: profile?.created_at || new Date().toISOString()
+          };
+        } else if (user.email === 'staff@hazel.com') {
+          finalProfile = {
+            id: user.id,
+            name: profile?.name || 'Staff Member',
+            email: user.email,
+            role: 'Staff',
+            is_active: true,
+            created_at: profile?.created_at || new Date().toISOString()
+          };
+        }
+
+        if (finalProfile) {
+          setUserProfile(finalProfile);
         } else {
           // Fallback if public profile does not exist yet (default to Staff)
           setUserProfile({

@@ -4,10 +4,11 @@ import { createAuditLog } from '@hazel/database';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const roles = await getUserRoles(params.id);
+    const { id } = await params;
+    const roles = await getUserRoles(id);
     return NextResponse.json({ success: true, data: roles });
   } catch (error) {
     console.error('Error fetching user roles:', error);
@@ -20,9 +21,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { role_id, assigned_by } = body;
 
@@ -33,14 +35,14 @@ export async function POST(
       );
     }
 
-    await assignRoleToUser(params.id, role_id, assigned_by);
+    await assignRoleToUser(id, role_id, assigned_by);
     
     // Log the action
     await createAuditLog({
       admin_id: assigned_by,
       action: 'assign_role',
       module: 'users',
-      detail: { user_id: params.id, role_id },
+      detail: { user_id: id, role_id },
     });
 
     return NextResponse.json({ success: true, message: 'Role assigned successfully' });
@@ -55,9 +57,10 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { role_id, removed_by } = body;
 
@@ -68,7 +71,7 @@ export async function DELETE(
       );
     }
 
-    await removeRoleFromUser(params.id, role_id);
+    await removeRoleFromUser(id, role_id);
     
     // Log the action
     if (removed_by) {
@@ -76,7 +79,7 @@ export async function DELETE(
         admin_id: removed_by,
         action: 'remove_role',
         module: 'users',
-        detail: { user_id: params.id, role_id },
+        detail: { user_id: id, role_id },
       });
     }
 

@@ -233,7 +233,7 @@ export async function updateOrderStatus(
       order_status: orderStatus,
       payment_status: paymentStatus,
       status_updated_at: new Date().toISOString(),
-      status_history,
+      status_history: statusHistory,
     })
     .eq('id', id)
     .select()

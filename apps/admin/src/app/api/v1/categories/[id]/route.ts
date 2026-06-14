@@ -4,10 +4,11 @@ import { createAuditLog } from '@hazel/database';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const category = await getCategoryById(params.id);
+    const { id } = await params;
+    const category = await getCategoryById(id);
     
     if (!category) {
       return NextResponse.json(
@@ -28,13 +29,14 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { updated_by, ...categoryData } = body;
 
-    const category = await updateCategory(params.id, categoryData, updated_by);
+    const category = await updateCategory(id, categoryData, updated_by);
     
     // Log the action
     await createAuditLog({
@@ -56,10 +58,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await deleteCategory(params.id);
+    const { id } = await params;
+    await deleteCategory(id);
     
     // Log the action
     const body = await request.json();
@@ -68,7 +71,7 @@ export async function DELETE(
         admin_id: body.deleted_by,
         action: 'delete',
         module: 'categories',
-        detail: { category_id: params.id },
+        detail: { category_id: id },
       });
     }
 

@@ -4,10 +4,11 @@ import { createAuditLog } from '@hazel/database';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const role = await getRoleById(params.id);
+    const { id } = await params;
+    const role = await getRoleById(id);
     
     if (!role) {
       return NextResponse.json(
@@ -28,13 +29,14 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { updated_by, ...roleData } = body;
 
-    const role = await updateRole(params.id, roleData);
+    const role = await updateRole(id, roleData);
     
     // Log the action
     if (updated_by) {
@@ -58,10 +60,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await deleteRole(params.id);
+    const { id } = await params;
+    await deleteRole(id);
     
     // Log the action
     const body = await request.json();
@@ -70,7 +73,7 @@ export async function DELETE(
         admin_id: body.deleted_by,
         action: 'delete',
         module: 'roles',
-        detail: { role_id: params.id },
+        detail: { role_id: id },
       });
     }
 

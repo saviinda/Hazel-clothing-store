@@ -4,10 +4,11 @@ import { createAuditLog } from '@hazel/database';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const permissions = await getRolePermissions(params.id);
+    const { id } = await params;
+    const permissions = await getRolePermissions(id);
     return NextResponse.json({ success: true, data: permissions });
   } catch (error) {
     console.error('Error fetching role permissions:', error);
@@ -20,9 +21,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { permission_id, assigned_by } = body;
 
@@ -33,7 +35,7 @@ export async function POST(
       );
     }
 
-    await assignPermissionToRole(params.id, permission_id);
+    await assignPermissionToRole(id, permission_id);
     
     // Log the action
     if (assigned_by) {
@@ -41,7 +43,7 @@ export async function POST(
         admin_id: assigned_by,
         action: 'assign_permission',
         module: 'roles',
-        detail: { role_id: params.id, permission_id },
+        detail: { role_id: id, permission_id },
       });
     }
 
@@ -57,9 +59,10 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { permission_id, removed_by } = body;
 
@@ -70,7 +73,7 @@ export async function DELETE(
       );
     }
 
-    await removePermissionFromRole(params.id, permission_id);
+    await removePermissionFromRole(id, permission_id);
     
     // Log the action
     if (removed_by) {
@@ -78,7 +81,7 @@ export async function DELETE(
         admin_id: removed_by,
         action: 'remove_permission',
         module: 'roles',
-        detail: { role_id: params.id, permission_id },
+        detail: { role_id: id, permission_id },
       });
     }
 

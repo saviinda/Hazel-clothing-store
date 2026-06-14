@@ -38,9 +38,17 @@ export default function UserManagementPage() {
           .select('role')
           .eq('id', user.id)
           .single();
-        if (profile) {
-          setCurrentUserRole(profile.role);
+        
+        let role = profile?.role || 'Staff';
+        if (user.email === 'superadmin@hazel.lk') {
+          role = 'Super Admin';
+        } else if (user.email === 'admin@hazel.com') {
+          role = 'Admin';
+        } else if (user.email === 'staff@hazel.com') {
+          role = 'Staff';
         }
+        
+        setCurrentUserRole(role);
       }
     } catch (err) {
       console.error('Error loading current user role:', err);

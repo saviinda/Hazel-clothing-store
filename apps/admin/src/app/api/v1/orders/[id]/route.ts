@@ -5,10 +5,11 @@ import { createAuditLog } from '@hazel/database';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const order = await getOrderById(params.id);
+    const { id } = await params;
+    const order = await getOrderById(id);
     
     if (!order) {
       return NextResponse.json(
@@ -29,9 +30,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { order_status, payment_status, updated_by, reason, courier, tracking_number } = body;
 
@@ -39,7 +41,7 @@ export async function PUT(
     
     if (courier && tracking_number) {
       // Update shipping info
-      order = await updateOrderShipping(params.id, courier, tracking_number);
+      order = await updateOrderShipping(id, courier, tracking_number);
       
       // Send shipping update email
       if (order.customer_id) {
@@ -56,7 +58,7 @@ export async function PUT(
       }
     } else {
       // Update order status
-      order = await updateOrderStatus(params.id, order_status, payment_status, updated_by, reason);
+      order = await updateOrderStatus(id, order_status, payment_status, updated_by, reason);
       
       // Handle payment verification emails
       if (payment_status === 'Verified' || payment_status === 'Rejected') {
