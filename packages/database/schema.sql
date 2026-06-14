@@ -178,8 +178,8 @@ BEGIN
         COALESCE(NEW.raw_user_metadata->>'name', 'Administrator'),
         NEW.email,
         CASE 
-            WHEN NEW.email = 'superadmin@hazelclothing.lk' THEN 'Super Admin'
-            WHEN NEW.email = 'admin@hazelclothing.lk' THEN 'Admin'
+            WHEN NEW.email = 'superadmin@hazel.lk' OR NEW.email = 'superadmin@hazelclothing.lk' THEN 'Super Admin'
+            WHEN NEW.email = 'admin@hazel.com' OR NEW.email = 'admin@hazelclothing.lk' THEN 'Admin'
             ELSE 'Staff'
         END,
         true
