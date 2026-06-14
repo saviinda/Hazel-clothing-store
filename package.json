@@ -1,0 +1,19 @@
+{
+  "name": "hazel-clothing-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:website": "npm run dev --workspace=apps/website",
+    "dev:admin": "npm run dev --workspace=apps/admin",
+    "build:website": "npm run build --workspace=apps/website",
+    "build:admin": "npm run build --workspace=apps/admin"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "overrides": {
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  }
+}
