@@ -190,7 +190,7 @@ export default function ContentManagerPage() {
   return (
     <div className="space-y-6 text-brand-secondary">
       {/* Tabs */}
-      <div className="flex border-b border-brand-primary-light/15">
+      <div className="scroll-tabs border-b border-brand-primary-light/15">
         {([
           { key: 'new_arrivals', label: 'NEW ARRIVALS', icon: Star },
           { key: 'hero', label: 'HERO BANNER', icon: ImageIcon },
@@ -215,7 +215,7 @@ export default function ContentManagerPage() {
       {activeTab === 'new_arrivals' && (
         <div className="space-y-6">
           {/* Summary banner */}
-          <div className="flex items-center justify-between bg-brand-primary/5 border border-brand-primary/15 rounded p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-brand-primary/5 border border-brand-primary/15 rounded p-4">
             <div>
               <h4 className="font-serif text-lg font-bold">New Arrivals on Homepage</h4>
               <p className="text-xs text-brand-secondary/60 font-semibold mt-1">
@@ -228,8 +228,9 @@ export default function ContentManagerPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-brand-primary-light/10 rounded shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse text-sm">
+          <div className="bg-white border border-brand-primary-light/10 rounded shadow-sm">
+            <div className="table-scroll-wrap">
+            <table className="w-full min-w-[560px] text-left border-collapse text-sm">
               <thead>
                 <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase bg-zinc-50/50">
                   <th className="py-3 px-4">Image</th>
@@ -291,6 +292,7 @@ export default function ContentManagerPage() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}
@@ -312,7 +314,7 @@ export default function ContentManagerPage() {
               className="w-full border rounded p-3 bg-white outline-none focus:border-brand-primary text-sm font-semibold h-20" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-brand-secondary/65 uppercase">CTA Button Text *</label>
               <input type="text" required value={heroCtaText} onChange={e => setHeroCtaText(e.target.value)}
@@ -370,7 +372,7 @@ export default function ContentManagerPage() {
                   className="absolute top-2 right-2 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition">
                   <Trash2 size={16} />
                 </button>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="col-span-2">
                     <label className="text-[10px] text-brand-secondary/60 block uppercase">Client Name</label>
                     <input type="text" required value={r.name} onChange={e => handleReviewChange(idx, 'name', e.target.value)}

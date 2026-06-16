@@ -18,7 +18,9 @@ import {
   UserCircle,
   Loader2,
   Shield,
-  Users
+  Users,
+  Menu,
+  X
 } from 'lucide-react';
 
 interface AdminShellProps {
@@ -30,6 +32,17 @@ export default function AdminShell({ children }: AdminShellProps) {
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.classList.toggle('mobile-menu-open', isMobileMenuOpen);
+    return () => document.body.classList.remove('mobile-menu-open');
+  }, [isMobileMenuOpen]);
 
   useEffect(() => {
     async function loadUserProfile() {
@@ -138,13 +151,35 @@ export default function AdminShell({ children }: AdminShellProps) {
     { label: 'Settings & Logs', path: '/settings', icon: Settings, hide: !isSuperOrAdmin },
   ];
 
+  const currentPageLabel =
+    menuItems.find((item) => item.path === pathname || (item.path !== '/' && pathname.startsWith(item.path)))?.label || 'Dashboard';
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-brand-primary-cream">
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-brand-primary-cream">
+      {/* Mobile Top Header */}
+      <div className="md:hidden flex h-16 w-full items-center justify-between bg-brand-secondary text-brand-primary-cream px-4 fixed top-0 z-50">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold tracking-[0.2em] text-brand-primary-light uppercase truncate">Hazel Admin</p>
+          <p className="font-serif text-sm font-bold tracking-wide truncate">{currentPageLabel}</p>
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="touch-target inline-flex items-center justify-center shrink-0"
+          aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-brand-secondary text-brand-primary-cream flex flex-col justify-between flex-shrink-0 border-r border-brand-primary/10">
+      <aside className={`
+        fixed top-16 bottom-0 left-0 z-40 transform bg-brand-secondary text-brand-primary-cream flex flex-col justify-between flex-shrink-0 border-r border-brand-primary/10 w-[min(100%,280px)] transition-transform duration-300 ease-in-out
+        md:top-0 md:relative md:translate-x-0 md:w-64 md:h-full
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         <div>
           {/* Brand Header — text only */}
-          <div className="flex h-20 items-center justify-center border-b border-brand-primary-cream/10 px-6">
+          <div className="flex h-16 md:h-20 items-center justify-center border-b border-brand-primary-cream/10 px-4">
             <Link href="/" className="flex flex-col items-center gap-0.5">
               <span className="font-serif text-2xl font-bold tracking-[0.12em] text-brand-primary-cream leading-none">HAZEL</span>
               <span className="text-[7px] tracking-[0.28em] text-[#d4a373] uppercase font-medium">Admin Portal</span>
@@ -196,14 +231,22 @@ export default function AdminShell({ children }: AdminShellProps) {
         </div>
       </aside>
 
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 top-16 bg-black/50 z-30 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Main Panel */}
-      <div className="flex flex-col flex-1 h-full overflow-hidden">
-        {/* Top Header */}
-        <header className="flex h-20 items-center justify-between border-b border-brand-primary-light/20 bg-white px-8 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="h-6 w-1 rounded-full bg-brand-primary inline-block" />
-            <h2 className="font-serif text-2xl font-bold text-brand-secondary">
-              {menuItems.find((item) => item.path === pathname || (item.path !== '/' && pathname.startsWith(item.path)))?.label || 'Dashboard'}
+      <div className="flex flex-col flex-1 h-full overflow-hidden w-full min-w-0 pt-16 md:pt-0">
+        {/* Top Header (Desktop only or shared) */}
+        <header className="hidden md:flex h-20 items-center justify-between border-b border-brand-primary-light/20 bg-white px-6 lg:px-8 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="h-6 w-1 rounded-full bg-brand-primary inline-block shrink-0" />
+            <h2 className="font-serif text-xl lg:text-2xl font-bold text-brand-secondary truncate">
+              {currentPageLabel}
             </h2>
           </div>
           <div className="flex items-center gap-3 text-xs font-semibold text-brand-secondary/50">
@@ -213,7 +256,7 @@ export default function AdminShell({ children }: AdminShellProps) {
         </header>
 
         {/* Content body */}
-        <main className="flex-1 overflow-y-auto p-8 bg-zinc-50/50">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-zinc-50/50 relative w-full min-w-0">
           {children}
         </main>
       </div>

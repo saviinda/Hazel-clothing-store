@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { supabase } from '@hazel/database';
 import { Product, Category } from '@hazel/shared';
 import ProductCard from '../../components/ProductCard';
+import ShopFilters from '../../components/ShopFilters';
 
 export const revalidate = 30; // ISR: reflect admin changes within 30 seconds
 
@@ -83,107 +84,44 @@ export default async function ShopPage({
   const allColors = Array.from(new Set(products.flatMap((p) => p.colors)));
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12 md:px-12 w-full flex flex-col md:flex-row gap-12">
-      {/* Filters Sidebar */}
-      <aside className="w-full md:w-64 flex-shrink-0 space-y-8">
-        {/* Categories */}
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-brand-secondary/40 mb-4">Categories</h3>
-          <ul className="space-y-2 text-sm font-semibold">
-            <li>
-              <Link
-                href="/shop"
-                className={`block py-1 hover:text-brand-primary transition ${!activeCategorySlug ? 'text-brand-primary' : 'text-brand-secondary/70'}`}
-              >
-                All Products
-              </Link>
-            </li>
-            {categories.map((cat) => (
-              <li key={cat.id}>
-                <Link
-                  href={`/shop?category=${cat.slug}${filterSize ? `&size=${filterSize}` : ''}${filterColor ? `&color=${filterColor}` : ''}`}
-                  className={`block py-1 hover:text-brand-primary transition ${activeCategorySlug === cat.slug ? 'text-brand-primary' : 'text-brand-secondary/70'}`}
-                >
-                  {cat.name}
-                </Link>
-              </li>
-            ))}
-            {categories.length === 0 && (
-              <li className="text-brand-secondary/35 italic text-xs">No categories yet</li>
-            )}
-          </ul>
-        </div>
-
-        {/* Size Filter */}
-        {allSizes.length > 0 && (
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-brand-secondary/40 mb-4">Filter By Size</h3>
-            <div className="flex flex-wrap gap-2">
-              {allSizes.map((size) => {
-                const active = filterSize === size;
-                const link = `/shop?${activeCategorySlug ? `category=${activeCategorySlug}&` : ''}size=${active ? '' : size}${filterColor ? `&color=${filterColor}` : ''}`;
-                return (
-                  <Link
-                    key={size}
-                    href={link}
-                    className={`flex h-10 w-10 items-center justify-center rounded border text-xs font-bold transition ${
-                      active
-                        ? 'border-brand-primary bg-brand-primary text-white'
-                        : 'border-brand-primary-light/30 bg-white text-brand-secondary hover:border-brand-primary'
-                    }`}
-                  >
-                    {size}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Color Filter */}
-        {allColors.length > 0 && (
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-brand-secondary/40 mb-4">Filter By Color</h3>
-            <div className="flex flex-col gap-2 text-sm font-semibold">
-              {allColors.map((color) => {
-                const active = filterColor === color;
-                const link = `/shop?${activeCategorySlug ? `category=${activeCategorySlug}&` : ''}${filterSize ? `size=${filterSize}&` : ''}color=${active ? '' : color}`;
-                return (
-                  <Link
-                    key={color}
-                    href={link}
-                    className={`flex items-center gap-2 py-1 hover:text-brand-primary transition ${active ? 'text-brand-primary' : 'text-brand-secondary/70'}`}
-                  >
-                    <span
-                      className="h-3 w-3 rounded-full border border-brand-primary-light/45"
-                      style={{ backgroundColor: color.toLowerCase().includes('wash') || color.toLowerCase().includes('denim') ? '#8da9c4' : color.replace(/\s+/g, '').toLowerCase() }}
-                    />
-                    {color}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </aside>
-
-      {/* Product Grid */}
-      <main className="flex-1 space-y-8">
-        {/* Top bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-brand-primary-light/10 pb-6">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 md:px-12 w-full">
+      {/* Mobile Filters Toggle + Sort Bar */}
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-brand-secondary/60">
             Showing <span className="font-bold text-brand-secondary">{filteredProducts.length}</span> products
           </p>
           <div className="flex gap-2 text-xs font-bold">
-            <Link href={`/shop?${activeCategorySlug ? `category=${activeCategorySlug}&` : ''}${filterSize ? `size=${filterSize}&` : ''}${filterColor ? `color=${filterColor}&` : ''}sort=newest`} className={`p-2 px-3 border rounded ${sortBy === 'newest' ? 'bg-brand-secondary text-white' : 'bg-white text-brand-secondary'}`}>Newest</Link>
-            <Link href={`/shop?${activeCategorySlug ? `category=${activeCategorySlug}&` : ''}${filterSize ? `size=${filterSize}&` : ''}${filterColor ? `color=${filterColor}&` : ''}sort=price-low`} className={`p-2 px-3 border rounded ${sortBy === 'price-low' ? 'bg-brand-secondary text-white' : 'bg-white text-brand-secondary'}`}>Price: Low–High</Link>
-            <Link href={`/shop?${activeCategorySlug ? `category=${activeCategorySlug}&` : ''}${filterSize ? `size=${filterSize}&` : ''}${filterColor ? `color=${filterColor}&` : ''}sort=price-high`} className={`p-2 px-3 border rounded ${sortBy === 'price-high' ? 'bg-brand-secondary text-white' : 'bg-white text-brand-secondary'}`}>Price: High–Low</Link>
+            <Link href={`/shop?${activeCategorySlug ? `category=${activeCategorySlug}&` : ''}${filterSize ? `size=${filterSize}&` : ''}${filterColor ? `color=${filterColor}&` : ''}sort=newest`} className={`min-h-[44px] inline-flex items-center px-3 border rounded ${sortBy === 'newest' ? 'bg-brand-secondary text-white' : 'bg-white text-brand-secondary'}`}>Newest</Link>
+            <Link href={`/shop?${activeCategorySlug ? `category=${activeCategorySlug}&` : ''}${filterSize ? `size=${filterSize}&` : ''}${filterColor ? `color=${filterColor}&` : ''}sort=price-low`} className={`min-h-[44px] inline-flex items-center px-3 border rounded ${sortBy === 'price-low' ? 'bg-brand-secondary text-white' : 'bg-white text-brand-secondary'}`}>↑ Price</Link>
+            <Link href={`/shop?${activeCategorySlug ? `category=${activeCategorySlug}&` : ''}${filterSize ? `size=${filterSize}&` : ''}${filterColor ? `color=${filterColor}&` : ''}sort=price-high`} className={`min-h-[44px] inline-flex items-center px-3 border rounded ${sortBy === 'price-high' ? 'bg-brand-secondary text-white' : 'bg-white text-brand-secondary'}`}>↓ Price</Link>
           </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-8 md:gap-12">
+      {/* Filters Sidebar — desktop always visible, mobile collapsible */}
+      <ShopFilters
+        categories={categories}
+        allSizes={allSizes}
+        allColors={allColors}
+        activeCategorySlug={activeCategorySlug}
+        filterSize={filterSize}
+        filterColor={filterColor}
+      />
+
+      {/* Product Grid */}
+      <main className="flex-1 space-y-8">
+        {/* Top bar - desktop only (moved to top on mobile) */}
+        <div className="hidden md:flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-brand-primary-light/10 pb-6">
+          <p className="text-sm font-semibold text-brand-secondary/60">
+            Showing <span className="font-bold text-brand-secondary">{filteredProducts.length}</span> products
+          </p>
         </div>
 
         {/* Products or empty state */}
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredProducts.map((prod) => (
               <ProductCard key={prod.id} product={prod} />
             ))}
@@ -201,6 +139,7 @@ export default async function ShopPage({
           </div>
         )}
       </main>
+      </div>
     </div>
   );
 }

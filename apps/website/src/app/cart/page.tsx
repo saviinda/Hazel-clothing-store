@@ -24,9 +24,9 @@ export default function CartPage() {
   const subtotal = getTotalPrice();
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12 md:px-12 md:py-16">
-      <div className="mb-10 text-center">
-        <h1 className="font-serif text-3xl font-bold text-brand-secondary md:text-4xl">Your Shopping Bag</h1>
+    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12 md:px-12 md:py-16">
+      <div className="mb-8 sm:mb-10 text-center">
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-brand-secondary md:text-4xl">Your Shopping Bag</h1>
         <div className="mx-auto mt-4 h-0.5 w-16 bg-brand-primary" />
       </div>
 
@@ -48,9 +48,9 @@ export default function CartPage() {
             {items.map((item) => (
               <div
                 key={`${item.product_id}-${item.size}-${item.color}`}
-                className="flex gap-5 rounded-lg border border-brand-primary-light/15 bg-white p-5 shadow-sm"
+                className="flex gap-3 sm:gap-5 rounded-lg border border-brand-primary-light/15 bg-white p-3 sm:p-5 shadow-sm"
               >
-                <div className="h-28 w-24 flex-shrink-0 overflow-hidden rounded bg-brand-primary-cream">
+                <div className="h-24 w-20 sm:h-28 sm:w-24 flex-shrink-0 overflow-hidden rounded bg-brand-primary-cream">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={item.image_url || '/logo.png'}
@@ -61,9 +61,9 @@ export default function CartPage() {
 
                 <div className="flex flex-1 flex-col justify-between">
                   <div>
-                    <div className="flex justify-between gap-4">
-                      <h3 className="font-semibold text-brand-secondary">{item.name}</h3>
-                      <span className="font-bold text-brand-secondary">LKR {(item.price * item.qty).toFixed(2)}</span>
+                    <div className="flex flex-col sm:flex-row justify-between gap-1 sm:gap-4">
+                      <h3 className="font-semibold text-brand-secondary text-sm sm:text-base">{item.name}</h3>
+                      <span className="font-bold text-brand-secondary text-sm sm:text-base">LKR {(item.price * item.qty).toFixed(2)}</span>
                     </div>
                     <p className="mt-1 text-sm text-brand-secondary/60">
                       Size: <span className="font-medium text-brand-secondary">{item.size}</span>

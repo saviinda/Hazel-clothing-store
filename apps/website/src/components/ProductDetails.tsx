@@ -38,7 +38,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
   const isOutOfStock = product.stock_qty <= 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 lg:gap-16">
       {/* 1. Image Gallery Panel */}
       <div className="space-y-4">
         {/* Main Image View */}
@@ -197,7 +197,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         </div>
 
         {/* Trust Badges */}
-        <div className="grid grid-cols-3 gap-4 border-t border-brand-primary-light/15 pt-6 text-center text-xs font-semibold text-brand-secondary/70">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 border-t border-brand-primary-light/15 pt-6 text-center text-xs font-semibold text-brand-secondary/70">
           <div className="flex flex-col items-center gap-1.5">
             <Truck size={18} className="text-brand-primary" />
             <span>Island-wide Shipping</span>

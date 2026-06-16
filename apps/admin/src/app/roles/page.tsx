@@ -226,8 +226,8 @@ export default function RolePermissionsPage() {
 
       {/* Create Role Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-5 sm:p-6 max-h-[90dvh] overflow-y-auto">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Create New Role</h3>
             <div className="space-y-4">
               <div>

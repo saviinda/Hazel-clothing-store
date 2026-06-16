@@ -115,7 +115,7 @@ export default function InventoryPage() {
   return (
     <div className="space-y-8 text-brand-secondary">
       {/* Tab Selectors */}
-      <div className="flex border-b border-brand-primary-light/15">
+      <div className="scroll-tabs border-b border-brand-primary-light/15">
         <button
           onClick={() => setActiveTab('status')}
           className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${

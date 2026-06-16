@@ -212,172 +212,37 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12 md:px-12 w-full">
-      <div className="mb-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:px-12 w-full">
+      <div className="mb-6">
         <Link href="/shop" className="inline-flex items-center gap-2 text-sm font-semibold text-brand-secondary/60 hover:text-brand-primary">
           <ArrowLeft size={16} />
           Back to Shop
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        {/* Left Side: Forms */}
-        <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-8">
-          {/* Shipping & Contact Address */}
-          <div className="space-y-6 bg-white p-8 border border-brand-primary-light/10 rounded shadow-sm">
-            <h3 className="font-serif text-xl font-bold text-brand-secondary">Shipping & Contact Details</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-brand-secondary/70 uppercase">Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Minoli Perera"
-                  className="w-full rounded border border-brand-primary-light/35 p-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-brand-secondary/70 uppercase">Phone Number *</label>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="0771234567"
-                  className="w-full rounded border border-brand-primary-light/35 p-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-brand-secondary/70 uppercase">Email Address *</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="minoli@gmail.com"
-                className="w-full rounded border border-brand-primary-light/35 p-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-brand-secondary/70 uppercase">Delivery Address *</label>
-              <input
-                type="text"
-                required
-                value={street}
-                onChange={(e) => setStreet(e.target.value)}
-                placeholder="45 Galle Road, Apartment 3B"
-                className="w-full rounded border border-brand-primary-light/35 p-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none mb-3"
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  required
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Colombo 03"
-                  className="w-full rounded border border-brand-primary-light/35 p-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
-                />
-                <input
-                  type="text"
-                  required
-                  value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
-                  placeholder="00300"
-                  className="w-full rounded border border-brand-primary-light/35 p-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Method: Bank Transfer */}
-          <div className="space-y-6 bg-white p-8 border border-brand-primary-light/10 rounded shadow-sm">
-            <h3 className="font-serif text-xl font-bold text-brand-secondary">Payment Method</h3>
-            
-            <div className="p-4 border border-brand-primary rounded bg-brand-primary-cream/25">
-              <span className="font-bold text-sm text-brand-secondary block">Bank Transfer (Offline Payment)</span>
-              <p className="text-xs text-brand-secondary/60 mt-1">Please transfer the total amount to the account below and upload a screenshot of your transfer confirmation receipt.</p>
-            </div>
-
-            {/* Bank details panel */}
-            <div className="p-5 bg-brand-primary-cream border border-brand-primary-light/15 rounded space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-brand-secondary/60">Bank Name</span>
-                <span className="font-bold text-brand-secondary">{bankDetails.bankName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-brand-secondary/60">Branch</span>
-                <span className="font-bold text-brand-secondary">{bankDetails.bankBranch}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-brand-secondary/60">Account Holder</span>
-                <span className="font-bold text-brand-secondary">{bankDetails.accountHolder}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-brand-secondary/60">Account Number</span>
-                <span className="font-bold text-brand-secondary">{bankDetails.accountNumber}</span>
-              </div>
-            </div>
-
-            {/* Receipt Upload Widget */}
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-brand-secondary/70 uppercase block">Upload Payment receipt (Optional now, can do on tracking page)</label>
-              
-              <div className="relative flex flex-col items-center justify-center border-2 border-dashed border-brand-primary-light/40 rounded p-6 bg-gray-50 hover:bg-gray-100/50 cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                />
-                <Upload className="text-brand-primary mb-2" size={24} />
-                {isUploading ? (
-                  <span className="flex items-center gap-2 text-xs font-semibold text-brand-secondary/75">
-                    <Loader2 className="animate-spin text-brand-primary" size={14} />
-                    Uploading receipt to Cloudinary...
-                  </span>
-                ) : receiptUrl ? (
-                  <span className="text-xs font-bold text-green-700">✓ Receipt Uploaded Successfully!</span>
-                ) : receiptFile ? (
-                  <span className="text-xs font-semibold text-brand-secondary/75">{receiptFile.name} Selected</span>
-                ) : (
-                  <span className="text-xs font-semibold text-brand-secondary/60">Click or Drag Image to upload receipt (JPG/PNG)</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </form>
-
-        {/* Right Side: Order Summary */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 pb-28 lg:pb-0">
+        {/* Order Summary — shown first on mobile */}
+        <div className="lg:col-span-5 order-first lg:order-last">
+          <div className="bg-white p-5 sm:p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-6 lg:sticky lg:top-24">
             <h3 className="font-serif text-lg font-bold text-brand-secondary">Order Summary</h3>
 
-            {/* Items summary */}
-            <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+            <div className="space-y-4 max-h-48 sm:max-h-64 overflow-y-auto pr-2">
               {items.map((item) => (
-                <div key={`${item.product_id}-${item.size}-${item.color}`} className="flex justify-between gap-4 text-sm">
-                  <div className="flex gap-3">
+                <div key={`${item.product_id}-${item.size}-${item.color}`} className="flex justify-between gap-3 text-sm">
+                  <div className="flex gap-3 min-w-0">
                     <span className="font-bold text-brand-primary bg-brand-primary-light/10 h-6 w-6 rounded flex items-center justify-center text-xs flex-shrink-0">{item.qty}x</span>
-                    <div>
-                      <h5 className="font-semibold text-brand-secondary">{item.name}</h5>
+                    <div className="min-w-0">
+                      <h5 className="font-semibold text-brand-secondary truncate">{item.name}</h5>
                       <span className="text-xs text-brand-secondary/50">Size: {item.size} | Color: {item.color}</span>
                     </div>
                   </div>
-                  <span className="font-semibold text-brand-secondary">LKR {item.price * item.qty}</span>
+                  <span className="font-semibold text-brand-secondary shrink-0">LKR {item.price * item.qty}</span>
                 </div>
               ))}
             </div>
 
             <hr className="border-brand-primary-light/15" />
 
-            {/* Calculations */}
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-brand-secondary/65">
                 <span>Subtotal</span>
@@ -394,18 +259,16 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Error notifications */}
             {errorMsg && (
               <div className="p-3 text-xs bg-red-50 text-red-800 border border-red-200 rounded font-semibold">
                 ⚠ {errorMsg}
               </div>
             )}
 
-            {/* Place Order Trigger */}
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || isUploading}
-              className={`w-full flex items-center justify-center gap-2 rounded h-14 text-sm font-bold tracking-widest text-white transition ${
+              className={`hidden lg:flex w-full items-center justify-center gap-2 rounded h-14 text-sm font-bold tracking-widest text-white transition ${
                 isSubmitting || isUploading
                   ? 'bg-brand-secondary/40 cursor-not-allowed'
                   : 'bg-brand-secondary hover:bg-brand-primary'
@@ -424,10 +287,170 @@ export default function CheckoutPage() {
               )}
             </button>
 
-            <p className="text-[10px] text-center text-brand-secondary/40 leading-relaxed">
-              By clicking "Place Order", you agree to pay the total amount via Bank Transfer and upload proof within 24 hours. Your stock reservation is held for 24 hours.
+            <p className="hidden lg:block text-[10px] text-center text-brand-secondary/40 leading-relaxed">
+              By clicking &quot;Place Order&quot;, you agree to pay the total amount via Bank Transfer and upload proof within 24 hours.
             </p>
           </div>
+        </div>
+
+        {/* Checkout Form */}
+        <form onSubmit={handleSubmit} className="lg:col-span-7 order-last lg:order-first space-y-6 sm:space-y-8">
+          <div className="space-y-5 bg-white p-5 sm:p-8 border border-brand-primary-light/10 rounded shadow-sm">
+            <h3 className="font-serif text-xl font-bold text-brand-secondary">Shipping &amp; Contact Details</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-brand-secondary/70 uppercase">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Minoli Perera"
+                  className="w-full rounded border border-brand-primary-light/35 p-3 text-base sm:text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-brand-secondary/70 uppercase">Phone Number *</label>
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="0771234567"
+                  className="w-full rounded border border-brand-primary-light/35 p-3 text-base sm:text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-brand-secondary/70 uppercase">Email Address *</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="minoli@gmail.com"
+                className="w-full rounded border border-brand-primary-light/35 p-3 text-base sm:text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-brand-secondary/70 uppercase">Delivery Address *</label>
+              <input
+                type="text"
+                required
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                placeholder="45 Galle Road, Apartment 3B"
+                className="w-full rounded border border-brand-primary-light/35 p-3 text-base sm:text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none mb-3"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  required
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Colombo 03"
+                  className="w-full rounded border border-brand-primary-light/35 p-3 text-base sm:text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
+                />
+                <input
+                  type="text"
+                  required
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  placeholder="00300"
+                  className="w-full rounded border border-brand-primary-light/35 p-3 text-base sm:text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6 bg-white p-5 sm:p-8 border border-brand-primary-light/10 rounded shadow-sm">
+            <h3 className="font-serif text-xl font-bold text-brand-secondary">Payment Method</h3>
+            
+            <div className="p-4 border border-brand-primary rounded bg-brand-primary-cream/25">
+              <span className="font-bold text-sm text-brand-secondary block">Bank Transfer (Offline Payment)</span>
+              <p className="text-xs text-brand-secondary/60 mt-1">Please transfer the total amount to the account below and upload a screenshot of your transfer confirmation receipt.</p>
+            </div>
+
+            <div className="p-4 sm:p-5 bg-brand-primary-cream border border-brand-primary-light/15 rounded space-y-3 text-sm">
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-4">
+                <span className="text-brand-secondary/60 shrink-0">Bank Name</span>
+                <span className="font-bold text-brand-secondary sm:text-right break-words">{bankDetails.bankName}</span>
+              </div>
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-4">
+                <span className="text-brand-secondary/60 shrink-0">Branch</span>
+                <span className="font-bold text-brand-secondary sm:text-right">{bankDetails.bankBranch}</span>
+              </div>
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-4">
+                <span className="text-brand-secondary/60 shrink-0">Account Holder</span>
+                <span className="font-bold text-brand-secondary sm:text-right break-words">{bankDetails.accountHolder}</span>
+              </div>
+              <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-4">
+                <span className="text-brand-secondary/60 shrink-0">Account Number</span>
+                <span className="font-bold text-brand-secondary sm:text-right">{bankDetails.accountNumber}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-brand-secondary/70 uppercase block">Upload Payment receipt (Optional now, can do on tracking page)</label>
+              
+              <div className="relative flex flex-col items-center justify-center border-2 border-dashed border-brand-primary-light/40 rounded p-6 bg-gray-50 hover:bg-gray-100/50 cursor-pointer min-h-[120px]">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <Upload className="text-brand-primary mb-2" size={24} />
+                {isUploading ? (
+                  <span className="flex items-center gap-2 text-xs font-semibold text-brand-secondary/75 text-center px-2">
+                    <Loader2 className="animate-spin text-brand-primary" size={14} />
+                    Uploading receipt to Cloudinary...
+                  </span>
+                ) : receiptUrl ? (
+                  <span className="text-xs font-bold text-green-700">✓ Receipt Uploaded Successfully!</span>
+                ) : receiptFile ? (
+                  <span className="text-xs font-semibold text-brand-secondary/75 text-center px-2">{receiptFile.name} Selected</span>
+                ) : (
+                  <span className="text-xs font-semibold text-brand-secondary/60 text-center px-2">Tap to upload receipt (JPG/PNG)</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* Mobile sticky checkout bar */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-primary-light/20 bg-white/95 backdrop-blur-md p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] lg:hidden">
+        <div className="mx-auto flex max-w-7xl items-center gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-brand-secondary/50">Total</p>
+            <p className="font-serif text-lg font-bold text-brand-secondary">LKR {total.toFixed(2)}</p>
+          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting || isUploading}
+            className={`touch-target flex shrink-0 items-center justify-center gap-2 rounded px-6 text-sm font-bold tracking-wider text-white transition ${
+              isSubmitting || isUploading
+                ? 'bg-brand-secondary/40 cursor-not-allowed'
+                : 'bg-brand-secondary hover:bg-brand-primary'
+            }`}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="animate-spin" size={16} />
+                PLACING...
+              </>
+            ) : (
+              <>
+                <ShieldCheck size={16} />
+                PLACE ORDER
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

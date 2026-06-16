@@ -263,7 +263,7 @@ export default function SettingsAndLogsPage() {
   return (
     <div className="space-y-8 text-brand-secondary">
       {/* Settings Sub-Tabs */}
-      <div className="flex border-b border-brand-primary-light/15">
+      <div className="scroll-tabs border-b border-brand-primary-light/15">
         <button
           onClick={() => setActiveTab('users')}
           className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
@@ -319,7 +319,7 @@ export default function SettingsAndLogsPage() {
         /* 1. Admins Directory Tab */
         <div className="bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm">
           <h4 className="font-serif text-lg font-bold mb-6">User Accounts Directory</h4>
-          <div className="overflow-x-auto">
+          <div className="table-scroll-wrap">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase">
@@ -512,7 +512,7 @@ export default function SettingsAndLogsPage() {
         /* 3. Audit Logs Tab */
         <div className="bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm">
           <h4 className="font-serif text-lg font-bold mb-6">Activity Compliance Audit Logs</h4>
-          <div className="overflow-x-auto">
+          <div className="table-scroll-wrap">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase">
@@ -560,7 +560,7 @@ export default function SettingsAndLogsPage() {
 
           <div className="space-y-4">
             {/* Seeding Demo */}
-            <div className="flex items-center justify-between p-4 border border-brand-primary-light/20 bg-brand-primary-cream/15 rounded">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 border border-brand-primary-light/20 bg-brand-primary-cream/15 rounded">
               <div>
                 <h5 className="text-xs font-bold uppercase text-brand-secondary">Populate Demo Seed Dataset</h5>
                 <p className="text-[11px] text-brand-secondary/60 font-semibold mt-1">Seeding populates 10 sample products, 3 categories, and dummy orders.</p>
@@ -575,7 +575,7 @@ export default function SettingsAndLogsPage() {
             </div>
 
             {/* Clear Orders */}
-            <div className="flex items-center justify-between p-4 border border-red-100 bg-red-50/25 rounded">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 border border-red-100 bg-red-50/25 rounded">
               <div>
                 <h5 className="text-xs font-bold uppercase text-red-700">Clear All Orders & Customers</h5>
                 <p className="text-[11px] text-red-500/80 font-semibold mt-1">Clears all sales order tracking entries and customer profiles database.</p>
@@ -590,7 +590,7 @@ export default function SettingsAndLogsPage() {
             </div>
 
             {/* Clear Products */}
-            <div className="flex items-center justify-between p-4 border border-red-100 bg-red-50/25 rounded">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 border border-red-100 bg-red-50/25 rounded">
               <div>
                 <h5 className="text-xs font-bold uppercase text-red-700">Clear All Catalog Products</h5>
                 <p className="text-[11px] text-red-500/80 font-semibold mt-1">Deletes all categories, subcategories, and active products inventory list.</p>
@@ -605,7 +605,7 @@ export default function SettingsAndLogsPage() {
             </div>
 
             {/* Logout All Devices */}
-            <div className="flex items-center justify-between p-4 border border-zinc-200 bg-zinc-50 rounded">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 border border-zinc-200 bg-zinc-50 rounded">
               <div>
                 <h5 className="text-xs font-bold uppercase text-brand-secondary">Logout From All Devices</h5>
                 <p className="text-[11px] text-brand-secondary/60 font-semibold mt-1">Invalidates all active sessions across all browsers and devices.</p>

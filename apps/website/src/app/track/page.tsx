@@ -217,21 +217,21 @@ function TrackContent() {
       </div>
 
       {/* Search Bar Form */}
-      <form onSubmit={handleSearchSubmit} className="flex gap-2 max-w-lg mx-auto bg-white p-2 border border-brand-primary-light/35 rounded shadow-sm">
-        <div className="flex-1 flex items-center gap-2 px-3 text-brand-secondary/40">
-          <Search size={18} />
+      <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-2 max-w-lg mx-auto bg-white p-2 border border-brand-primary-light/35 rounded shadow-sm">
+        <div className="flex flex-1 items-center gap-2 px-3 py-2 text-brand-secondary/40 min-w-0">
+          <Search size={18} className="shrink-0" />
           <input
             type="text"
             required
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="e.g. o1000000-0000-0000-0000-000000000001"
-            className="w-full text-sm text-brand-secondary outline-none placeholder-brand-secondary/35 bg-transparent"
+            placeholder="Enter your order ID"
+            className="w-full min-w-0 text-sm text-brand-secondary outline-none placeholder-brand-secondary/35 bg-transparent"
           />
         </div>
         <button
           type="submit"
-          className="bg-brand-secondary hover:bg-brand-primary text-white font-bold p-3 px-6 rounded text-xs tracking-wider flex items-center gap-1 transition"
+          className="touch-target bg-brand-secondary hover:bg-brand-primary text-white font-bold px-6 rounded text-xs tracking-wider flex items-center justify-center gap-1 transition shrink-0"
         >
           SEARCH
           <ArrowRight size={14} />
@@ -261,12 +261,12 @@ function TrackContent() {
 
       {/* Order Tracking Dashboard */}
       {order && !loading && (
-        <div className="bg-white p-8 border border-brand-primary-light/10 rounded shadow-sm space-y-10 animate-fade-in">
+        <div className="bg-white p-5 sm:p-8 border border-brand-primary-light/10 rounded shadow-sm space-y-8 sm:space-y-10 animate-fade-in">
           {/* Order Identity Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-brand-primary-light/10 pb-6">
-            <div>
+            <div className="min-w-0">
               <span className="text-xs font-bold text-brand-secondary/45 uppercase tracking-widest">ORDER DETAILS</span>
-              <h3 className="font-sans text-lg font-bold text-brand-secondary mt-1">ID: #{order.id}</h3>
+              <h3 className="font-sans text-base sm:text-lg font-bold text-brand-secondary mt-1 break-all">ID: #{order.id}</h3>
               <p className="text-xs text-brand-secondary/65 mt-1">Placed on: {new Date(order.created_at).toLocaleString()}</p>
             </div>
             <div className="text-right">
@@ -278,9 +278,9 @@ function TrackContent() {
           {/* Timeline Tracker */}
           <div className="space-y-6">
             <h4 className="text-sm font-bold text-brand-secondary uppercase tracking-wider">Status Timeline</h4>
-            <div className="relative flex flex-col md:flex-row justify-between gap-8 md:gap-4 mt-8">
+            <div className="relative flex flex-col xl:flex-row justify-between gap-4 xl:gap-2 mt-4 xl:mt-8">
               {/* Timeline Connector Line */}
-              <div className="absolute top-0 bottom-0 left-[19px] md:top-5 md:bottom-auto md:left-5 md:right-5 h-full md:h-0.5 bg-brand-primary-light/20 z-0 flex-1" />
+              <div className="absolute top-0 bottom-0 left-[19px] xl:top-5 xl:bottom-auto xl:left-5 xl:right-5 h-full xl:h-0.5 bg-brand-primary-light/20 z-0" />
               
               {STATUS_STEPS.map((step, idx) => {
                 const isCompleted = idx < activeStepIndex;
@@ -288,10 +288,10 @@ function TrackContent() {
                 const isPending = idx > activeStepIndex;
 
                 return (
-                  <div key={step} className="flex md:flex-col items-center md:items-center text-left md:text-center gap-4 md:gap-3 z-10 flex-1">
+                  <div key={step} className="flex xl:flex-col items-center xl:items-center text-left xl:text-center gap-4 xl:gap-2 z-10 flex-1 min-w-0">
                     {/* Circle Indicator */}
                     <div 
-                      className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs border transition duration-300 ${
+                      className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center font-bold text-xs border transition duration-300 ${
                         isCompleted 
                           ? 'bg-green-600 border-green-600 text-white shadow' 
                           : isActive 
@@ -302,8 +302,8 @@ function TrackContent() {
                       {isCompleted ? '✓' : idx + 1}
                     </div>
                     {/* Label */}
-                    <div className="space-y-1">
-                      <span className={`text-xs font-bold block ${isActive ? 'text-brand-primary' : isCompleted ? 'text-green-700' : 'text-brand-secondary/45'}`}>
+                    <div className="space-y-1 min-w-0">
+                      <span className={`text-xs font-bold block truncate xl:whitespace-normal ${isActive ? 'text-brand-primary' : isCompleted ? 'text-green-700' : 'text-brand-secondary/45'}`}>
                         {step}
                       </span>
                     </div>

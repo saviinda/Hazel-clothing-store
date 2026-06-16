@@ -321,7 +321,7 @@ export default function OrderDetailPage() {
                     href={order.payment_proof_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="absolute inset-0 flex items-center justify-center bg-brand-secondary/45 text-white font-bold text-xs gap-1.5 opacity-0 group-hover:opacity-100 transition duration-300"
+                    className="absolute inset-0 flex items-center justify-center bg-brand-secondary/45 text-white font-bold text-xs gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition duration-300"
                   >
                     <Eye size={16} />
                     View Large Image

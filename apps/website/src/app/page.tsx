@@ -49,7 +49,7 @@ export default async function Home() {
   return (
     <div className="flex flex-col w-full pb-20">
       {/* 1. Hero Banner */}
-      <section className="relative h-[85vh] w-full bg-brand-secondary overflow-hidden">
+      <section className="relative min-h-[70vh] sm:min-h-[85vh] w-full bg-brand-secondary overflow-hidden flex items-end sm:items-stretch">
         <div className="absolute inset-0 bg-gradient-to-r from-brand-secondary/80 via-brand-secondary/45 to-transparent z-10" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -57,20 +57,20 @@ export default async function Home() {
           alt="Hazel Clothing Hero"
           className="absolute h-full w-full object-cover object-center z-0 scale-105 animate-[scale-up_20s_ease-out_infinite_alternate]"
         />
-        <div className="relative z-20 flex h-full flex-col items-start justify-center text-left px-6 md:px-20 max-w-7xl mx-auto w-full">
-          <span className="font-serif text-brand-primary-light text-lg md:text-xl tracking-[0.25em] mb-4 font-light uppercase">
+        <div className="relative z-20 flex h-full flex-col items-start justify-end sm:justify-center text-left px-6 md:px-20 max-w-7xl mx-auto w-full pb-14 sm:pb-0">
+          <span className="font-serif text-brand-primary-light text-sm sm:text-lg md:text-xl tracking-[0.25em] mb-3 font-light uppercase">
             Hazel Boutique
           </span>
-          <h1 className="font-serif text-5xl md:text-8xl font-light tracking-wide text-brand-primary-cream leading-[1.05] max-w-3xl uppercase">
+          <h1 className="font-serif text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-light tracking-wide text-brand-primary-cream leading-[1.05] max-w-3xl uppercase break-words">
             {bannerTitle}
           </h1>
-          <p className="mt-6 text-brand-primary-cream/85 text-sm md:text-lg max-w-xl font-light tracking-wide leading-relaxed font-sans">
+          <p className="mt-4 text-brand-primary-cream/85 text-xs sm:text-sm md:text-lg max-w-sm sm:max-w-xl font-light tracking-wide leading-relaxed font-sans">
             {bannerSubtitle}
           </p>
-          <div className="mt-10">
+          <div className="mt-8">
             <Link
               href={bannerCtaLink}
-              className="relative inline-flex items-center justify-center overflow-hidden border border-brand-primary bg-brand-primary p-4 px-12 text-[11px] font-bold tracking-[0.2em] text-white transition duration-500 rounded-sm group"
+              className="relative inline-flex items-center justify-center overflow-hidden border border-brand-primary bg-brand-primary p-3 px-8 sm:p-4 sm:px-12 text-[11px] font-bold tracking-[0.2em] text-white transition duration-500 rounded-sm group"
             >
               <span className="relative z-10">{bannerCtaText}</span>
               <div className="absolute inset-0 bg-brand-secondary scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500 z-0"></div>
@@ -80,14 +80,14 @@ export default async function Home() {
       </section>
 
       {/* 2. Trust Bar */}
-      <section className="bg-white border-b border-brand-primary-light/10 py-10">
-        <div className="mx-auto max-w-7xl px-6 md:px-12 grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
+      <section className="bg-white border-b border-brand-primary-light/10 py-8 sm:py-10">
+        <div className="mx-auto max-w-7xl px-6 md:px-12 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-10 text-center">
           <div className="flex flex-col items-center space-y-2">
             <span className="text-[10px] tracking-[0.25em] font-semibold text-brand-primary/80 uppercase">01 / LOGISTICS</span>
             <h4 className="font-serif text-lg font-light text-brand-secondary tracking-wider">Island-Wide Delivery</h4>
             <p className="text-xs text-brand-secondary-light/70 max-w-xs leading-relaxed">Delivered straight to your doorstep across Sri Lanka.</p>
           </div>
-          <div className="flex flex-col items-center space-y-2 border-y border-brand-primary-light/15 py-6 md:border-y-0 md:border-x md:py-0">
+          <div className="flex flex-col items-center space-y-2 border-y border-brand-primary-light/15 py-6 sm:border-y-0 sm:border-x sm:py-0">
             <span className="text-[10px] tracking-[0.25em] font-semibold text-brand-primary/80 uppercase">02 / PAYMENT</span>
             <h4 className="font-serif text-lg font-light text-brand-secondary tracking-wider">Easy Bank Transfers</h4>
             <p className="text-xs text-brand-secondary-light/70 max-w-xs leading-relaxed">Upload receipt screenshots at checkout for instant verification.</p>
@@ -101,10 +101,10 @@ export default async function Home() {
       </section>
 
       {/* 3. Dynamic Categories — pulled live from DB */}
-      <section className="mx-auto max-w-7xl px-6 py-24 md:px-12 w-full">
-        <div className="text-center mb-16 space-y-2">
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24 md:px-12 w-full">
+        <div className="text-center mb-10 sm:mb-16 space-y-2">
           <span className="text-brand-primary text-xs uppercase tracking-[0.3em] font-semibold block mb-2">Curated Collections</span>
-          <h2 className="font-serif text-4xl md:text-5xl font-light text-brand-secondary tracking-wide">
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-brand-secondary tracking-wide">
             Browse by <span className="italic font-normal">Category</span>
           </h2>
           <div className="h-[1px] w-24 bg-brand-primary/40 mx-auto mt-4"></div>
@@ -113,10 +113,10 @@ export default async function Home() {
       </section>
 
       {/* 4. Featured Products — pulled live from DB */}
-      <section className="mx-auto max-w-7xl px-6 py-16 md:px-12 w-full">
-        <div className="text-center mb-16 space-y-2">
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16 md:px-12 w-full">
+        <div className="text-center mb-10 sm:mb-16 space-y-2">
           <span className="text-brand-primary text-xs uppercase tracking-[0.3em] font-semibold block mb-2">Our Favorites</span>
-          <h2 className="font-serif text-4xl md:text-5xl font-light text-brand-secondary tracking-wide">
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-brand-secondary tracking-wide">
             Trending <span className="italic font-normal">New Arrivals</span>
           </h2>
           <div className="h-[1px] w-24 bg-brand-primary/40 mx-auto mt-4"></div>
@@ -128,7 +128,7 @@ export default async function Home() {
           let colClass = 'grid-cols-2 md:grid-cols-4';
           if (count === 1) colClass = 'grid-cols-1 max-w-xs mx-auto';
           else if (count === 2) colClass = 'grid-cols-2 max-w-lg mx-auto';
-          else if (count === 3) colClass = 'grid-cols-3 max-w-3xl mx-auto';
+          else if (count === 3) colClass = 'grid-cols-2 sm:grid-cols-3 max-w-3xl mx-auto';
           else if (count % 4 === 0) colClass = 'grid-cols-2 md:grid-cols-4';
           else if (count % 3 === 0) colClass = 'grid-cols-2 md:grid-cols-3';
           else if (count % 2 === 0) colClass = 'grid-cols-2 md:grid-cols-4';
@@ -157,15 +157,15 @@ export default async function Home() {
       </section>
 
       {/* 5. Testimonials */}
-      <section className="mx-auto max-w-7xl px-6 py-24 md:px-12 w-full">
-        <div className="text-center mb-16 space-y-2">
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24 md:px-12 w-full">
+        <div className="text-center mb-10 sm:mb-16 space-y-2">
           <span className="text-brand-primary text-xs uppercase tracking-[0.3em] font-semibold block mb-2">Testimonials</span>
-          <h2 className="font-serif text-4xl md:text-5xl font-light text-brand-secondary tracking-wide">
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-brand-secondary tracking-wide">
             Loved by <span className="italic font-normal">Customers</span>
           </h2>
           <div className="h-[1px] w-24 bg-brand-primary/40 mx-auto mt-4"></div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {(testimonials && testimonials.length > 0 ? testimonials : [
             { comment: 'Absolutely love the Blush Linen Midi Dress! The fabric is perfect for Colombo weather and the fit is spot on.', name: 'Shenali D.', rating: 5 },
             { comment: 'Bought the Mom Jeans and White Crop Top. Both look exactly like the photos on their Instagram. Shipping was super fast!', name: 'Ishini W.', rating: 5 },
@@ -245,9 +245,9 @@ async function CategoryBlocks() {
               className="absolute h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
             />
             <div className="absolute inset-4 border border-white/0 group-hover:border-white/20 transition duration-500 pointer-events-none z-10" />
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-end text-white p-8 translate-y-2 group-hover:translate-y-0 transition duration-500">
-              <span className="font-serif text-3xl font-light tracking-wide italic">{cat.name}</span>
-              <span className="text-[10px] tracking-[0.25em] uppercase mt-3 text-brand-primary-light border-b border-brand-primary-light/40 pb-1 opacity-0 group-hover:opacity-100 transition duration-500">
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-end text-white p-6 sm:p-8 translate-y-0 sm:translate-y-2 sm:group-hover:translate-y-0 transition duration-500">
+              <span className="font-serif text-2xl sm:text-3xl font-light tracking-wide italic text-center">{cat.name}</span>
+              <span className="text-[10px] tracking-[0.25em] uppercase mt-3 text-brand-primary-light border-b border-brand-primary-light/40 pb-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition duration-500">
                 Explore Collection
               </span>
             </div>

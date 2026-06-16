@@ -14,7 +14,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const addItem = useCart((state) => state.addItem);
 
   const handleQuickAdd = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent details page navigation
+    e.preventDefault();
     addItem({
       product_id: product.id,
       name: product.name,
@@ -27,8 +27,10 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <Link href={`/product/${product.id}`} className="group relative flex flex-col overflow-hidden bg-white border border-brand-primary-light/10 transition duration-500 hover:shadow-[0_12px_30px_rgba(181,131,141,0.08)] rounded-sm">
-      {/* Product Image Block */}
+    <Link
+      href={`/product/${product.id}`}
+      className="group relative flex flex-col overflow-hidden bg-white border border-brand-primary-light/10 transition duration-500 hover:shadow-[0_12px_30px_rgba(181,131,141,0.08)] rounded-sm"
+    >
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-brand-primary-cream/40">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -37,11 +39,10 @@ export default function ProductCard({ product }: ProductCardProps) {
           className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
         />
 
-        {/* Hover Action Button Overlay */}
-        <div className="absolute inset-0 flex items-end justify-center p-4 bg-brand-secondary/5 opacity-0 transition-all duration-500 group-hover:opacity-100">
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-center bg-gradient-to-t from-brand-secondary/50 via-brand-secondary/20 to-transparent p-3 opacity-100 transition-all duration-500 lg:opacity-0 lg:group-hover:opacity-100">
           <button
             onClick={handleQuickAdd}
-            className="flex items-center justify-center gap-2 w-full rounded-sm bg-brand-primary p-3 text-[10px] font-semibold tracking-[0.2em] text-white shadow-lg hover:bg-brand-secondary transition duration-300 transform translate-y-2 group-hover:translate-y-0"
+            className="flex w-full items-center justify-center gap-2 rounded-sm bg-brand-primary p-3 text-[10px] font-semibold tracking-[0.2em] text-white shadow-lg hover:bg-brand-secondary transition duration-300 min-h-[44px]"
           >
             <ShoppingBag size={14} />
             QUICK ADD
@@ -49,17 +50,18 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
       </div>
 
-      {/* Details Box */}
-      <div className="flex flex-col p-4 bg-white flex-1 justify-between">
+      <div className="flex flex-col p-3 sm:p-4 bg-white flex-1 justify-between">
         <div className="space-y-1">
-          <h3 className="font-serif text-base font-light tracking-wide text-brand-secondary group-hover:text-brand-primary transition duration-300">
+          <h3 className="font-serif text-sm sm:text-base font-light tracking-wide text-brand-secondary group-hover:text-brand-primary transition duration-300 line-clamp-2">
             {product.name}
           </h3>
           {product.material && (
-            <p className="text-[10px] text-brand-secondary-light/60 uppercase tracking-[0.15em] font-medium">{product.material}</p>
+            <p className="text-[10px] text-brand-secondary-light/60 uppercase tracking-[0.15em] font-medium truncate">
+              {product.material}
+            </p>
           )}
         </div>
-        <p className="mt-3 font-serif text-sm font-normal text-brand-secondary">
+        <p className="mt-2 sm:mt-3 font-serif text-sm font-normal text-brand-secondary">
           LKR {Number(product.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
       </div>
