@@ -62,7 +62,7 @@ export default function AboutPage() {
           </div>
           <div className="relative aspect-[4/5] overflow-hidden rounded-lg">
             <Image
-              src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80"
+              src="/hazel.png"
               alt="Hazel Clothing Boutique fashion"
               fill
               className="object-cover"

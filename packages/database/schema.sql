@@ -194,6 +194,28 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
     EXECUTE FUNCTION public.handle_new_user();
 
 -- ROW LEVEL SECURITY (RLS) POLICIES
+
+-- Helper functions for RLS (SECURITY DEFINER to run as superuser and avoid infinite recursion)
+CREATE OR REPLACE FUNCTION public.check_user_active(user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.users
+        WHERE id = user_id AND is_active = true
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.check_user_role_and_active(user_id UUID, roles_list text[])
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.users
+        WHERE id = user_id AND role = ANY(roles_list) AND is_active = true
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
@@ -210,10 +232,7 @@ CREATE POLICY products_public_read ON public.products
 
 CREATE POLICY products_admin_all ON public.products
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.is_active = true
-        )
+        public.check_user_active(auth.uid())
     );
 
 -- 2. Categories RLS Policies
@@ -222,10 +241,7 @@ CREATE POLICY categories_public_read ON public.categories
 
 CREATE POLICY categories_admin_all ON public.categories
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.is_active = true
-        )
+        public.check_user_active(auth.uid())
     );
 
 -- 3. Users RLS Policies
@@ -234,10 +250,7 @@ CREATE POLICY users_self_read ON public.users
 
 CREATE POLICY users_admin_all ON public.users
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.role IN ('Super Admin', 'Admin') AND users.is_active = true
-        )
+        public.check_user_role_and_active(auth.uid(), ARRAY['Super Admin', 'Admin'])
     );
 
 -- 4. Orders RLS Policies
@@ -249,10 +262,7 @@ CREATE POLICY orders_public_read_tracking ON public.orders
 
 CREATE POLICY orders_admin_all ON public.orders
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.is_active = true
-        )
+        public.check_user_active(auth.uid())
     );
 
 -- 5. Customers RLS Policies
@@ -261,19 +271,13 @@ CREATE POLICY customers_public_create ON public.customers
 
 CREATE POLICY customers_admin_all ON public.customers
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.is_active = true
-        )
+        public.check_user_active(auth.uid())
     );
 
 -- 6. Inventory Logs RLS Policies
 CREATE POLICY inventory_logs_admin_all ON public.inventory_logs
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.is_active = true
-        )
+        public.check_user_active(auth.uid())
     );
 
 -- 7. Content RLS Policies
@@ -282,26 +286,32 @@ CREATE POLICY content_public_read ON public.content
 
 CREATE POLICY content_admin_all ON public.content
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.role IN ('Super Admin', 'Admin') AND users.is_active = true
-        )
+        public.check_user_role_and_active(auth.uid(), ARRAY['Super Admin', 'Admin'])
     );
 
 -- 8. Notifications RLS Policies
 CREATE POLICY notifications_admin_all ON public.notifications
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.role IN ('Super Admin', 'Admin') AND users.is_active = true
-        )
+        public.check_user_role_and_active(auth.uid(), ARRAY['Super Admin', 'Admin'])
     );
 
 -- 9. Audit Logs RLS Policies
 CREATE POLICY audit_logs_admin_all ON public.audit_logs
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.role IN ('Super Admin', 'Admin') AND users.is_active = true
-        )
+        public.check_user_role_and_active(auth.uid(), ARRAY['Super Admin', 'Admin'])
+    );
+
+-- 10. SESSIONS TABLE
+CREATE TABLE IF NOT EXISTS public.sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL
+);
+
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY sessions_admin_all ON public.sessions
+    FOR ALL USING (
+        public.check_user_active(auth.uid())
     );

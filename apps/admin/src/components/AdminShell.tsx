@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { logoutAction } from '@/app/actions/auth';
 import { supabase } from '@/lib/supabase';
 import { User, AdminRole } from '@hazel/shared';
 import { 
@@ -107,8 +107,8 @@ export default function AdminShell({ children }: AdminShellProps) {
   }, [pathname, router]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
+    setLoading(true); // show loader during logout
+    await logoutAction();
   };
 
   if (pathname === '/login') {
@@ -143,11 +143,11 @@ export default function AdminShell({ children }: AdminShellProps) {
       {/* Sidebar Navigation */}
       <aside className="w-64 bg-brand-secondary text-brand-primary-cream flex flex-col justify-between flex-shrink-0 border-r border-brand-primary/10">
         <div>
-          {/* Logo Header */}
-          <div className="flex h-20 items-center justify-center border-b border-brand-primary-cream/10 px-4">
-            <Link href="/" className="flex flex-col items-center">
-              <Image src="/logo.png" alt="Hazel Clothing Boutique" width={160} height={56} className="h-12 w-auto object-contain" priority />
-              <span className="text-[8px] tracking-[0.2em] text-brand-primary uppercase mt-1">ADMIN PORTAL</span>
+          {/* Brand Header — text only */}
+          <div className="flex h-20 items-center justify-center border-b border-brand-primary-cream/10 px-6">
+            <Link href="/" className="flex flex-col items-center gap-0.5">
+              <span className="font-serif text-2xl font-bold tracking-[0.12em] text-brand-primary-cream leading-none">HAZEL</span>
+              <span className="text-[7px] tracking-[0.28em] text-[#d4a373] uppercase font-medium">Admin Portal</span>
             </Link>
           </div>
 
@@ -199,13 +199,16 @@ export default function AdminShell({ children }: AdminShellProps) {
       {/* Main Panel */}
       <div className="flex flex-col flex-1 h-full overflow-hidden">
         {/* Top Header */}
-        <header className="flex h-20 items-center justify-between border-b border-brand-primary-light/20 bg-white px-8">
-          <h2 className="font-serif text-2xl font-bold text-brand-secondary">
-            {menuItems.find((item) => item.path === pathname || (item.path !== '/' && pathname.startsWith(item.path)))?.label || 'Dashboard'}
-          </h2>
-          <div className="flex items-center gap-4 text-xs font-bold text-brand-secondary/60">
+        <header className="flex h-20 items-center justify-between border-b border-brand-primary-light/20 bg-white px-8 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="h-6 w-1 rounded-full bg-brand-primary inline-block" />
+            <h2 className="font-serif text-2xl font-bold text-brand-secondary">
+              {menuItems.find((item) => item.path === pathname || (item.path !== '/' && pathname.startsWith(item.path)))?.label || 'Dashboard'}
+            </h2>
+          </div>
+          <div className="flex items-center gap-3 text-xs font-semibold text-brand-secondary/50">
             <span>Server status: Online</span>
-            <span className="h-2 w-2 rounded-full bg-green-500" />
+            <span className="flex h-2 w-2 rounded-full bg-green-500 shadow shadow-green-400" />
           </div>
         </header>
 

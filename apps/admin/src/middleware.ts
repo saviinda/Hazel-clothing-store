@@ -1,9 +1,18 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const SESSION_TIMEOUT_MINUTES = 30;
+function getExpirationTime() {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() + SESSION_TIMEOUT_MINUTES);
+  return date.toISOString();
+}
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -32,14 +41,53 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isLoginPath = request.nextUrl.pathname.startsWith('/login');
+  const sessionId = request.cookies.get('hz_session_id')?.value;
+  let customSessionValid = false;
 
-  if (!user && !isLoginPath) {
+  if (sessionId) {
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    
+    const now = new Date().toISOString();
+    const { data: session } = await adminClient
+      .from('sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .gt('expires_at', now)
+      .single();
+
+    if (session) {
+      const newExpiresAt = getExpirationTime();
+      const { error } = await adminClient
+        .from('sessions')
+        .update({ expires_at: newExpiresAt })
+        .eq('id', sessionId);
+        
+      if (!error) {
+        customSessionValid = true;
+        supabaseResponse.cookies.set('hz_session_id', sessionId, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: SESSION_TIMEOUT_MINUTES * 60,
+        });
+      }
+    }
+  }
+
+  if ((!user || !customSessionValid) && !isLoginPath) {
+    if (user) {
+      await supabase.auth.signOut();
+      supabaseResponse.cookies.delete('hz_session_id');
+    }
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  if (user && isLoginPath) {
+  if (user && customSessionValid && isLoginPath) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     const redirectResponse = NextResponse.redirect(url);

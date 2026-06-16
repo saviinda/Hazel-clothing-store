@@ -17,29 +17,15 @@ import {
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
-    totalOrders: 15,
-    revenue: 42500,
-    pendingVerifications: 2,
-    lowStock: 3,
+    totalOrders: 0,
+    revenue: 0,
+    pendingVerifications: 0,
+    lowStock: 0,
   });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [statusData, setStatusData] = useState<any[]>([]);
+  const [topProductsData, setTopProductsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Mock charts data
-  const statusData = [
-    { name: 'Processing', value: 4, color: '#d4a373' },
-    { name: 'Packed', value: 3, color: '#b5838d' },
-    { name: 'Shipped', value: 5, color: '#cc704b' },
-    { name: 'Completed', value: 3, color: '#2d6a4f' },
-  ];
-
-  const topProductsData = [
-    { name: 'Linen Midi Dress', sales: 12 },
-    { name: 'Mom Jeans', sales: 9 },
-    { name: 'Square Neck Top', sales: 8 },
-    { name: 'Crop Top', sales: 6 },
-    { name: 'Summer Wrap Dress', sales: 4 },
-  ];
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -60,29 +46,54 @@ export default function Dashboard() {
           .lte('stock_qty', 5)
           .eq('is_deleted', false);
 
-        if (ordersData && ordersData.length > 0) {
-          // Calculate stats
-          const totalOrdersCount = ordersData.length;
-          const pendingCount = ordersData.filter(o => o.order_status === 'Payment Verification').length;
-          const verifiedOrders = ordersData.filter(o => o.payment_status === 'Verified');
-          const totalRevenue = verifiedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+        const orders = ordersData || [];
 
-          setStats({
-            totalOrders: totalOrdersCount,
-            revenue: totalRevenue,
-            pendingVerifications: pendingCount,
-            lowStock: lowStockCount || 0,
+        // Calculate stats
+        const totalOrdersCount = orders.length;
+        const pendingCount = orders.filter(o => o.order_status === 'Payment Verification').length;
+        const verifiedOrders = orders.filter(o => o.payment_status === 'Verified');
+        const totalRevenue = verifiedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+
+        setStats({
+          totalOrders: totalOrdersCount,
+          revenue: totalRevenue,
+          pendingVerifications: pendingCount,
+          lowStock: lowStockCount || 0,
+        });
+
+        setRecentOrders(orders.slice(0, 5));
+
+        // Calculate status split
+        const processing = orders.filter(o => o.order_status === 'Processing').length;
+        const packed = orders.filter(o => o.order_status === 'Packed').length;
+        const shipped = orders.filter(o => o.order_status === 'Shipped').length;
+        const completed = orders.filter(o => o.order_status === 'Completed').length;
+
+        setStatusData([
+          { name: 'Processing', value: processing, color: '#d4a373' },
+          { name: 'Packed', value: packed, color: '#b5838d' },
+          { name: 'Shipped', value: shipped, color: '#cc704b' },
+          { name: 'Completed', value: completed, color: '#2d6a4f' },
+        ]);
+
+        // Calculate top products sales
+        const productSales: Record<string, number> = {};
+        orders.forEach((order) => {
+          const items = Array.isArray(order.items) ? order.items : [];
+          items.forEach((item: any) => {
+            const name = item.name || 'Unknown Product';
+            const qty = Number(item.qty) || 1;
+            productSales[name] = (productSales[name] || 0) + qty;
           });
+        });
 
-          setRecentOrders(ordersData.slice(0, 5));
-        } else {
-          // Use some mock recent orders if database is blank
-          setRecentOrders([
-            { id: 'o1', customer: { name: 'Minoli Perera' }, total_amount: 4200, payment_status: 'Pending', order_status: 'Pending Payment', created_at: new Date().toISOString() },
-            { id: 'o2', customer: { name: 'Avanthi De Silva' }, total_amount: 7900, payment_status: 'Uploaded', order_status: 'Payment Verification', created_at: new Date().toISOString() },
-            { id: 'o3', customer: { name: 'Dilini W.' }, total_amount: 2400, payment_status: 'Verified', order_status: 'Completed', created_at: new Date().toISOString() },
-          ]);
-        }
+        const topProducts = Object.entries(productSales)
+          .map(([name, sales]) => ({ name, sales }))
+          .sort((a, b) => b.sales - a.sales)
+          .slice(0, 5);
+
+        setTopProductsData(topProducts);
+
       } catch (err) {
         console.error(err);
       } finally {
@@ -155,16 +166,20 @@ export default function Dashboard() {
         {/* Top Products Sales (Bar Chart) */}
         <div className="lg:col-span-2 bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-4">
           <h4 className="font-serif text-lg font-bold text-brand-secondary">Top Selling Products</h4>
-          <div className="h-64 w-full text-xs">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topProductsData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="sales" fill="#b5838d" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="h-64 w-full text-xs flex items-center justify-center">
+            {topProductsData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topProductsData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="sales" fill="#b5838d" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <span className="text-brand-secondary/40 italic text-sm">No sales data available.</span>
+            )}
           </div>
         </div>
 
@@ -172,24 +187,28 @@ export default function Dashboard() {
         <div className="bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-4">
           <h4 className="font-serif text-lg font-bold text-brand-secondary">Orders Status Split</h4>
           <div className="h-64 w-full flex items-center justify-center text-xs">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={statusData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {stats.totalOrders > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <span className="text-brand-secondary/40 italic text-sm">No orders to display.</span>
+            )}
           </div>
         </div>
       </div>
@@ -218,38 +237,46 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-primary-light/5 text-brand-secondary font-semibold">
-              {recentOrders.map((ord) => (
-                <tr key={ord.id} className="hover:bg-zinc-50/50">
-                  <td className="py-4 font-mono text-xs">{ord.id.slice(0, 8)}...</td>
-                  <td>{ord.customer?.name || 'Guest'}</td>
-                  <td className="text-xs text-brand-secondary/60">{new Date(ord.created_at).toLocaleDateString()}</td>
-                  <td>LKR {Number(ord.total_amount).toFixed(2)}</td>
-                  <td>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                      ord.payment_status === 'Verified' ? 'bg-green-100 text-green-800' :
-                      ord.payment_status === 'Uploaded' ? 'bg-blue-100 text-blue-800 animate-pulse' :
-                      ord.payment_status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {ord.payment_status}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="inline-flex items-center rounded bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-800 uppercase">
-                      {ord.order_status}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <Link
-                      href={`/orders/${ord.id}`}
-                      className="inline-flex items-center gap-1 bg-brand-primary-light/20 hover:bg-brand-primary hover:text-white transition text-xs font-bold p-1 px-3 rounded text-brand-primary"
-                    >
-                      <ShieldCheck size={14} />
-                      Verify
-                    </Link>
+              {recentOrders.length > 0 ? (
+                recentOrders.map((ord) => (
+                  <tr key={ord.id} className="hover:bg-zinc-50/50">
+                    <td className="py-4 font-mono text-xs">{ord.id.slice(0, 8)}...</td>
+                    <td>{ord.customer?.name || 'Guest'}</td>
+                    <td className="text-xs text-brand-secondary/60">{new Date(ord.created_at).toLocaleDateString()}</td>
+                    <td>LKR {Number(ord.total_amount).toFixed(2)}</td>
+                    <td>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                        ord.payment_status === 'Verified' ? 'bg-green-100 text-green-800' :
+                        ord.payment_status === 'Uploaded' ? 'bg-blue-100 text-blue-800 animate-pulse' :
+                        ord.payment_status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {ord.payment_status}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="inline-flex items-center rounded bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-800 uppercase">
+                        {ord.order_status}
+                      </span>
+                    </td>
+                    <td className="text-right">
+                      <Link
+                        href={`/orders/${ord.id}`}
+                        className="inline-flex items-center gap-1 bg-brand-primary-light/20 hover:bg-brand-primary hover:text-white transition text-xs font-bold p-1 px-3 rounded text-brand-primary"
+                      >
+                        <ShieldCheck size={14} />
+                        Verify
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-brand-secondary/40 italic">
+                    No orders placed yet…
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

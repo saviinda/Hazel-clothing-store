@@ -1,26 +1,42 @@
-'use client';
+import React from 'react';
+import { supabase } from '@hazel/database';
+import ContactForm from './ContactForm';
+import { Mail, Phone, MapPin, Clock } from 'lucide-react';
 
-import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Clock, Send, CheckCircle2 } from 'lucide-react';
+export const revalidate = 30; // Reflect admin changes within 30 seconds
 
-export default function ContactPage() {
-  const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const mailBody = [
-      `Name: ${form.name}`,
-      `Email: ${form.email}`,
-      `Phone: ${form.phone}`,
-      '',
-      form.message,
-    ].join('\n');
-
-    const mailto = `mailto:hello@hazelclothing.lk?subject=${encodeURIComponent(form.subject || 'Website Enquiry')}&body=${encodeURIComponent(mailBody)}`;
-    window.location.href = mailto;
-    setSubmitted(true);
+export default async function ContactPage() {
+  // Fetch contact info from content table
+  let contactInfo = {
+    email: 'hello@hazelclothing.lk',
+    whatsapp: '94771234567',
+    instagram: 'https://instagram.com/hazelclothing',
+    tiktok: 'https://tiktok.com/@hazelclothing',
   };
+
+  try {
+    const { data } = await supabase
+      .from('content')
+      .select('data')
+      .eq('section_key', 'contact_info')
+      .maybeSingle();
+
+    if (data?.data) {
+      contactInfo = {
+        email: data.data.email || contactInfo.email,
+        whatsapp: data.data.whatsapp || contactInfo.whatsapp,
+        instagram: data.data.instagram || contactInfo.instagram,
+        tiktok: data.data.tiktok || contactInfo.tiktok,
+      };
+    }
+  } catch (err) {
+    console.error('Contact info fetch error:', err);
+  }
+
+  const whatsappLink = `https://wa.me/${contactInfo.whatsapp.replace(/\D/g, '')}`;
+  const displayPhone = contactInfo.whatsapp.startsWith('94')
+    ? `+${contactInfo.whatsapp.slice(0, 2)} ${contactInfo.whatsapp.slice(2, 4)} ${contactInfo.whatsapp.slice(4, 7)} ${contactInfo.whatsapp.slice(7)}`
+    : `+${contactInfo.whatsapp}`;
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-12 md:px-12 md:py-16">
@@ -33,6 +49,7 @@ export default function ContactPage() {
       </div>
 
       <div className="grid gap-12 lg:grid-cols-5">
+        {/* Left sidebar — contact details */}
         <div className="space-y-6 lg:col-span-2">
           <div className="rounded-lg border border-brand-primary-light/15 bg-white p-6 shadow-sm">
             <h2 className="font-serif text-xl font-bold text-brand-secondary">Get In Touch</h2>
@@ -43,14 +60,14 @@ export default function ContactPage() {
               </li>
               <li className="flex gap-3">
                 <Phone size={18} className="mt-0.5 shrink-0 text-brand-primary" />
-                <a href="tel:+94771234567" className="hover:text-brand-primary transition">
-                  +94 77 123 4567
+                <a href={whatsappLink} className="hover:text-brand-primary transition">
+                  {displayPhone}
                 </a>
               </li>
               <li className="flex gap-3">
                 <Mail size={18} className="mt-0.5 shrink-0 text-brand-primary" />
-                <a href="mailto:hello@hazelclothing.lk" className="hover:text-brand-primary transition">
-                  hello@hazelclothing.lk
+                <a href={`mailto:${contactInfo.email}`} className="hover:text-brand-primary transition">
+                  {contactInfo.email}
                 </a>
               </li>
               <li className="flex gap-3">
@@ -66,7 +83,7 @@ export default function ContactPage() {
               Prefer to chat? Message us directly for styling advice or order help.
             </p>
             <a
-              href="https://wa.me/94771234567"
+              href={whatsappLink}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-4 inline-block rounded bg-brand-primary px-6 py-2.5 text-sm font-bold tracking-wider text-white hover:bg-brand-primary-light hover:text-brand-secondary transition"
@@ -79,7 +96,7 @@ export default function ContactPage() {
             <h3 className="font-semibold text-brand-secondary">Follow Us</h3>
             <div className="mt-3 flex gap-4 text-sm">
               <a
-                href="https://instagram.com/hazelclothing"
+                href={contactInfo.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-primary hover:text-brand-secondary transition"
@@ -88,7 +105,7 @@ export default function ContactPage() {
               </a>
               <span className="text-brand-primary-light">|</span>
               <a
-                href="https://tiktok.com/@hazelclothing"
+                href={contactInfo.tiktok}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-primary hover:text-brand-secondary transition"
@@ -99,97 +116,9 @@ export default function ContactPage() {
           </div>
         </div>
 
+        {/* Right — contact form (client component) */}
         <div className="lg:col-span-3">
-          {submitted ? (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-green-200 bg-green-50 py-16 text-center">
-              <CheckCircle2 size={48} className="mb-4 text-green-600" />
-              <h2 className="font-serif text-2xl font-bold text-brand-secondary">Message Ready!</h2>
-              <p className="mt-2 max-w-sm text-sm text-brand-secondary/65">
-                Your email app should open with your message. If it didn&apos;t, email us at hello@hazelclothing.lk
-              </p>
-              <button
-                onClick={() => setSubmitted(false)}
-                className="mt-6 text-sm font-medium text-brand-primary hover:text-brand-secondary"
-              >
-                Send another message
-              </button>
-            </div>
-          ) : (
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-5 rounded-lg border border-brand-primary-light/15 bg-white p-6 shadow-sm md:p-8"
-            >
-              <h2 className="font-serif text-xl font-bold text-brand-secondary">Send a Message</h2>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-brand-secondary/60">Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full rounded border border-brand-primary-light/30 bg-white px-4 py-3 text-sm outline-none focus:border-brand-primary"
-                    placeholder="Your name"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-brand-secondary/60">Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full rounded border border-brand-primary-light/30 bg-white px-4 py-3 text-sm outline-none focus:border-brand-primary"
-                    placeholder="you@email.com"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-brand-secondary/60">Phone</label>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full rounded border border-brand-primary-light/30 bg-white px-4 py-3 text-sm outline-none focus:border-brand-primary"
-                    placeholder="07X XXX XXXX"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-brand-secondary/60">Subject</label>
-                  <input
-                    type="text"
-                    value={form.subject}
-                    onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                    className="w-full rounded border border-brand-primary-light/30 bg-white px-4 py-3 text-sm outline-none focus:border-brand-primary"
-                    placeholder="Order enquiry, sizing help..."
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase text-brand-secondary/60">Message</label>
-                <textarea
-                  required
-                  rows={5}
-                  value={form.message}
-                  onChange={(e) => setForm({ ...form, message: e.target.value })}
-                  className="w-full resize-none rounded border border-brand-primary-light/30 bg-white px-4 py-3 text-sm outline-none focus:border-brand-primary"
-                  placeholder="How can we help you?"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="flex w-full items-center justify-center gap-2 rounded bg-brand-secondary py-4 text-sm font-bold tracking-widest text-white hover:bg-brand-primary transition sm:w-auto sm:px-10"
-              >
-                <Send size={16} />
-                SEND MESSAGE
-              </button>
-            </form>
-          )}
+          <ContactForm ownerEmail={contactInfo.email} />
         </div>
       </div>
     </div>

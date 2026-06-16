@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useActionState } from 'react';
-import Image from 'next/image';
 import { Loader2, Lock, Mail } from 'lucide-react';
 import { loginAction, type LoginState } from './actions';
 
@@ -13,10 +12,13 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-primary-cream px-6">
-      <div className="w-full max-w-md bg-white border border-brand-primary-light/20 p-8 rounded shadow-lg space-y-8 animate-fade-in">
-        <div className="flex flex-col items-center text-center">
-          <Image src="/logo.png" alt="Hazel Clothing Boutique" width={200} height={72} className="h-16 w-auto object-contain" priority />
-          <span className="text-[10px] tracking-[0.25em] text-brand-primary uppercase mt-3">ADMIN PORTAL</span>
+      <div className="w-full max-w-md bg-white border border-brand-primary-light/20 p-10 rounded shadow-lg space-y-8 animate-fade-in">
+
+        {/* Brand mark — text only */}
+        <div className="flex flex-col items-center text-center space-y-1 pb-2">
+          <span className="font-serif text-4xl font-bold tracking-[0.15em] text-brand-secondary leading-none">HAZEL</span>
+          <span className="text-[9px] tracking-[0.3em] text-[#d4a373] uppercase font-medium">Clothing Boutique · Admin Portal</span>
+          <div className="h-px w-16 bg-brand-primary/30 mt-3" />
         </div>
 
         {state?.error && (

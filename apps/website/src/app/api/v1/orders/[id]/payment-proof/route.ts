@@ -3,9 +3,10 @@ import { updateOrderPaymentProof } from '@hazel/database';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { payment_proof_url } = body;
 
@@ -16,7 +17,7 @@ export async function PUT(
       );
     }
 
-    const order = await updateOrderPaymentProof(params.id, payment_proof_url);
+    const order = await updateOrderPaymentProof(id, payment_proof_url);
     return NextResponse.json({ success: true, data: order });
   } catch (error) {
     console.error('Error updating payment proof:', error);

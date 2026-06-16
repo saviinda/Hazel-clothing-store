@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@hazel/database';
+import { getSupabaseAdminClient } from '@hazel/database';
 import { EmailService } from '@hazel/services';
 
 export async function POST(request: Request) {
@@ -14,20 +14,42 @@ export async function POST(request: Request) {
       );
     }
 
+    const adminClient = getSupabaseAdminClient();
+
     // 1. Resolve or Create Customer Profile
     let customerId = '';
     // Look up by phone number first
-    const { data: existingCustomer } = await supabase
+    let { data: existingCustomer } = await adminClient
       .from('customers')
       .select('id')
       .eq('phone', phone)
       .maybeSingle();
 
+    // If not found by phone, look up by email (if email is provided)
+    if (!existingCustomer && email) {
+      const { data: existingByEmail } = await adminClient
+        .from('customers')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+      existingCustomer = existingByEmail;
+    }
+
     if (existingCustomer) {
       customerId = existingCustomer.id;
+      // Update the customer details with the latest shipping info
+      await adminClient
+        .from('customers')
+        .update({
+          name,
+          phone,
+          email: email || null,
+          address: { street, city, postal_code },
+        })
+        .eq('id', customerId);
     } else {
       // Create new customer
-      const { data: newCustomer, error: customerError } = await supabase
+      const { data: newCustomer, error: customerError } = await adminClient
         .from('customers')
         .insert({
           name,
@@ -56,7 +78,7 @@ export async function POST(request: Request) {
     };
 
     // 3. Insert Order in database
-    const { data: newOrder, error: orderError } = await supabase
+    const { data: newOrder, error: orderError } = await adminClient
       .from('orders')
       .insert({
         customer_id: customerId,

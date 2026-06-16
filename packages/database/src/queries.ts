@@ -152,7 +152,8 @@ export async function deleteCategory(id: string): Promise<void> {
 
 // ==================== ORDERS ====================
 export async function createOrder(order: Partial<Order>): Promise<Order> {
-  const { data, error } = await supabase
+  const admin = getSupabaseAdminClient();
+  const { data, error } = await admin
     .from('orders')
     .insert({
       ...order,
@@ -279,7 +280,8 @@ export async function updateOrderShipping(id: string, courier: string, trackingN
 
 // ==================== CUSTOMERS ====================
 export async function createCustomer(customer: Partial<Customer>): Promise<Customer> {
-  const { data, error } = await supabase
+  const admin = getSupabaseAdminClient();
+  const { data, error } = await admin
     .from('customers')
     .insert({
       ...customer,
@@ -557,7 +559,8 @@ export async function getAuditLogs(filters?: {
 
 // ==================== ROLES ====================
 export async function getRoles(): Promise<any[]> {
-  const { data, error } = await supabase
+  const admin = getSupabaseAdminClient();
+  const { data, error } = await admin
     .from('roles')
     .select('*')
     .order('name', { ascending: true });
@@ -567,7 +570,8 @@ export async function getRoles(): Promise<any[]> {
 }
 
 export async function getRoleById(id: string): Promise<any | null> {
-  const { data, error } = await supabase
+  const admin = getSupabaseAdminClient();
+  const { data, error } = await admin
     .from('roles')
     .select('*')
     .eq('id', id)
@@ -628,7 +632,8 @@ export async function deleteRole(id: string): Promise<void> {
 
 // ==================== PERMISSIONS ====================
 export async function getPermissions(): Promise<any[]> {
-  const { data, error } = await supabase
+  const admin = getSupabaseAdminClient();
+  const { data, error } = await admin
     .from('permissions')
     .select('*')
     .order('resource', { ascending: true });
@@ -638,7 +643,8 @@ export async function getPermissions(): Promise<any[]> {
 }
 
 export async function getPermissionById(id: string): Promise<any | null> {
-  const { data, error } = await supabase
+  const admin = getSupabaseAdminClient();
+  const { data, error } = await admin
     .from('permissions')
     .select('*')
     .eq('id', id)
@@ -675,7 +681,8 @@ export async function deletePermission(id: string): Promise<void> {
 
 // ==================== ROLE PERMISSIONS ====================
 export async function getRolePermissions(roleId: string): Promise<any[]> {
-  const { data, error } = await supabase
+  const admin = getSupabaseAdminClient();
+  const { data, error } = await admin
     .from('role_permissions')
     .select('*, permissions(*)')
     .eq('role_id', roleId);
@@ -710,7 +717,8 @@ export async function removePermissionFromRole(roleId: string, permissionId: str
 
 // ==================== USER ROLES ====================
 export async function getUserRoles(userId: string): Promise<any[]> {
-  const { data, error } = await supabase
+  const admin = getSupabaseAdminClient();
+  const { data, error } = await admin
     .from('user_roles')
     .select('*, roles(*)')
     .eq('user_id', userId);

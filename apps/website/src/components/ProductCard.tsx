@@ -27,21 +27,21 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <Link href={`/product/${product.id}`} className="group relative flex flex-col overflow-hidden bg-white border border-brand-primary-light/10 transition duration-300 hover:shadow-lg rounded">
+    <Link href={`/product/${product.id}`} className="group relative flex flex-col overflow-hidden bg-white border border-brand-primary-light/10 transition duration-500 hover:shadow-[0_12px_30px_rgba(181,131,141,0.08)] rounded-sm">
       {/* Product Image Block */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-50">
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-brand-primary-cream/40">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={product.images[0] || '/placeholder.jpg'}
           alt={product.name}
-          className="h-full w-full object-cover object-center transition duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
         />
 
         {/* Hover Action Button Overlay */}
-        <div className="absolute inset-0 flex items-end justify-center p-4 bg-brand-secondary/10 opacity-0 transition duration-300 group-hover:opacity-100">
+        <div className="absolute inset-0 flex items-end justify-center p-4 bg-brand-secondary/5 opacity-0 transition-all duration-500 group-hover:opacity-100">
           <button
             onClick={handleQuickAdd}
-            className="flex items-center justify-center gap-2 w-full rounded bg-brand-primary-cream/95 p-3 text-xs font-bold tracking-widest text-brand-secondary shadow-lg hover:bg-brand-primary hover:text-white transition duration-200"
+            className="flex items-center justify-center gap-2 w-full rounded-sm bg-brand-primary p-3 text-[10px] font-semibold tracking-[0.2em] text-white shadow-lg hover:bg-brand-secondary transition duration-300 transform translate-y-2 group-hover:translate-y-0"
           >
             <ShoppingBag size={14} />
             QUICK ADD
@@ -50,16 +50,16 @@ export default function ProductCard({ product }: ProductCardProps) {
       </div>
 
       {/* Details Box */}
-      <div className="flex flex-col p-4 bg-brand-primary-cream/20 flex-1 justify-between">
-        <div>
-          <h3 className="text-sm font-semibold tracking-wide text-brand-secondary group-hover:text-brand-primary transition">
+      <div className="flex flex-col p-4 bg-white flex-1 justify-between">
+        <div className="space-y-1">
+          <h3 className="font-serif text-base font-light tracking-wide text-brand-secondary group-hover:text-brand-primary transition duration-300">
             {product.name}
           </h3>
           {product.material && (
-            <p className="mt-1 text-[11px] text-brand-secondary/40 uppercase tracking-widest">{product.material}</p>
+            <p className="text-[10px] text-brand-secondary-light/60 uppercase tracking-[0.15em] font-medium">{product.material}</p>
           )}
         </div>
-        <p className="mt-3 text-sm font-bold text-brand-secondary">
+        <p className="mt-3 font-serif text-sm font-normal text-brand-secondary">
           LKR {Number(product.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
       </div>

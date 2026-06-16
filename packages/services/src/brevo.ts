@@ -6,13 +6,14 @@ interface SendEmailParams {
 }
 
 export class EmailService {
-  private static apiKey = process.env.BREVO_API_KEY || '';
-  private static senderEmail = process.env.BREVO_SENDER_EMAIL || 'noreply@hazelclothing.lk';
-  private static senderName = process.env.BREVO_SENDER_NAME || 'Hazel Clothing';
-  private static adminEmail = process.env.BREVO_ADMIN_EMAIL || 'hazeladmin@hazelclothing.lk';
+  private static getApiKey() { return process.env.BREVO_API_KEY || ''; }
+  private static getSenderEmail() { return process.env.BREVO_SENDER_EMAIL || 'noreply@hazelclothing.lk'; }
+  private static getSenderName() { return process.env.BREVO_SENDER_NAME || 'Hazel Clothing'; }
+  private static getAdminEmail() { return process.env.BREVO_ADMIN_EMAIL || 'hazeladmin@hazelclothing.lk'; }
 
   private static async send({ toEmail, toName, subject, htmlContent }: SendEmailParams): Promise<boolean> {
-    if (!this.apiKey) {
+    const apiKey = this.getApiKey();
+    if (!apiKey) {
       console.warn('BREVO_API_KEY is not defined. Email dispatch skipped.');
       return false;
     }
@@ -22,11 +23,11 @@ export class EmailService {
         method: 'POST',
         headers: {
           'accept': 'application/json',
-          'api-key': this.apiKey,
+          'api-key': apiKey,
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          sender: { name: this.senderName, email: this.senderEmail },
+          sender: { name: this.getSenderName(), email: this.getSenderEmail() },
           to: [{ email: toEmail, name: toName }],
           subject: subject,
           htmlContent: htmlContent,
@@ -119,6 +120,83 @@ export class EmailService {
     return this.send({ toEmail: customerEmail, toName: customerName, subject, htmlContent: html });
   }
 
+  // 5. Send Contact Form Message to Owner + Auto-reply to Customer
+  static async sendContactMessage(params: {
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    subject: string;
+    message: string;
+    ownerEmail: string;
+  }): Promise<boolean> {
+    const { customerName, customerEmail, customerPhone, subject, message, ownerEmail } = params;
+
+    // Email to owner
+    const ownerHtml = `
+      <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px;">
+        <div style="background: #2d2d2d; padding: 20px 24px; border-radius: 6px 6px 0 0;">
+          <h2 style="color: #d4a373; margin: 0; font-size: 20px;">📩 New Contact Message</h2>
+          <p style="color: #aaa; margin: 4px 0 0; font-size: 13px;">Via Hazel Clothing website contact form</p>
+        </div>
+        <div style="background: #fdfaf6; padding: 24px; border: 1px solid #f5ebe0; border-top: none;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr><td style="padding: 8px 0; color: #888; width: 120px;">Name</td><td style="padding: 8px 0; font-weight: bold;">${customerName}</td></tr>
+            <tr><td style="padding: 8px 0; color: #888;">Email</td><td style="padding: 8px 0;"><a href="mailto:${customerEmail}" style="color: #d4a373;">${customerEmail}</a></td></tr>
+            <tr><td style="padding: 8px 0; color: #888;">Phone</td><td style="padding: 8px 0;">${customerPhone || '—'}</td></tr>
+            <tr><td style="padding: 8px 0; color: #888;">Subject</td><td style="padding: 8px 0;">${subject || 'Website Enquiry'}</td></tr>
+          </table>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 16px 0;" />
+          <p style="color: #555; font-size: 14px; line-height: 1.7; white-space: pre-wrap;">${message}</p>
+        </div>
+        <div style="background: #f5ebe0; padding: 12px 24px; border-radius: 0 0 6px 6px; font-size: 11px; color: #aaa;">
+          Hazel Clothing Boutique · Sri Lanka
+        </div>
+      </div>
+    `;
+
+    // Auto-reply to customer
+    const customerHtml = `
+      <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px;">
+        <div style="background: #2d2d2d; padding: 20px 24px; border-radius: 6px 6px 0 0;">
+          <h2 style="color: #d4a373; margin: 0; font-size: 20px;">We received your message! 💌</h2>
+        </div>
+        <div style="background: #fdfaf6; padding: 24px; border: 1px solid #f5ebe0; border-top: none;">
+          <p style="font-size: 15px;">Hi <strong>${customerName}</strong>,</p>
+          <p style="font-size: 14px; line-height: 1.7; color: #555;">
+            Thank you for reaching out to Hazel Clothing! We have received your message and our team will get back to you as soon as possible — usually within a few hours during business hours (Mon–Sat, 9 AM–6 PM).
+          </p>
+          <div style="background: #fff; border: 1px solid #f5ebe0; border-left: 4px solid #d4a373; padding: 16px; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0; font-size: 13px; color: #888;">Your message:</p>
+            <p style="margin: 8px 0 0; font-size: 14px; color: #333; white-space: pre-wrap;">${message}</p>
+          </div>
+          <p style="font-size: 14px; color: #555;">
+            For urgent enquiries, you can also reach us on <strong>WhatsApp</strong> — the link is on our contact page.
+          </p>
+        </div>
+        <div style="background: #f5ebe0; padding: 12px 24px; border-radius: 0 0 6px 6px; font-size: 11px; color: #aaa;">
+          Hazel Clothing Boutique · Sri Lanka
+        </div>
+      </div>
+    `;
+
+    const [ownerSent, customerSent] = await Promise.all([
+      this.send({
+        toEmail: ownerEmail,
+        toName: 'Hazel Clothing',
+        subject: `📩 Contact: ${subject || 'Website Enquiry'} — from ${customerName}`,
+        htmlContent: ownerHtml,
+      }),
+      this.send({
+        toEmail: customerEmail,
+        toName: customerName,
+        subject: `We received your message — Hazel Clothing`,
+        htmlContent: customerHtml,
+      }),
+    ]);
+
+    return ownerSent || customerSent;
+  }
+
   // 4. Send New Order Alert to Admin
   static async sendNewOrderAlertToAdmin(orderId: string, totalAmount: number): Promise<boolean> {
     const subject = `🚨 ALERT: New Order Placed (#${orderId.slice(0, 8)})`;
@@ -135,6 +213,6 @@ export class EmailService {
         </a>
       </div>
     `;
-    return this.send({ toEmail: this.adminEmail, toName: 'Hazel Admin', subject, htmlContent: html });
+    return this.send({ toEmail: this.getAdminEmail(), toName: 'Hazel Admin', subject, htmlContent: html });
   }
 }

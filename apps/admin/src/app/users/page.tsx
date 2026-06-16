@@ -33,13 +33,12 @@ export default function UserManagementPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        
-        let role = profile?.role || 'Staff';
+        const res = await fetch(`/api/v1/users/${user.id}`);
+        const data = await res.json();
+        let role = 'Staff';
+        if (data.success && data.data) {
+          role = data.data.role;
+        }
         if (user.email === 'superadmin@hazel.lk') {
           role = 'Super Admin';
         } else if (user.email === 'admin@hazel.com') {
@@ -58,13 +57,10 @@ export default function UserManagementPage() {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
+      const res = await fetch('/api/v1/users');
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed to load users');
+      setUsers(data.data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load users');
     } finally {
@@ -78,54 +74,26 @@ export default function UserManagementPage() {
       return;
     }
 
+    if (newUserRole === 'Super Admin') {
+      setError('Creating another Super Admin is not allowed');
+      return;
+    }
+
     try {
       setError(null);
       
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUserEmail,
-        password: 'TempPassword123!', // Default password, user should change on first login
-        options: {
-          data: {
-            name: newUserName,
-          },
-        },
-      });
-
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Failed to create user');
-
-      // Create user profile in users table
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
+      const res = await fetch('/api/v1/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           name: newUserName,
           email: newUserEmail,
           role: newUserRole,
-          is_active: true,
-          created_at: new Date().toISOString(),
-        });
+        }),
+      });
 
-      if (profileError) throw profileError;
-
-      // Assign role
-      const { data: roleData } = await supabase
-        .from('roles')
-        .select('id')
-        .eq('name', newUserRole)
-        .single();
-
-      if (roleData) {
-        await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            role_id: roleData.id,
-            assigned_by: (await supabase.auth.getUser()).data.user?.id,
-            assigned_at: new Date().toISOString(),
-          });
-      }
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed to create user');
 
       setSuccess('User created successfully. Default password: TempPassword123!');
       setNewUserName('');
@@ -147,11 +115,11 @@ export default function UserManagementPage() {
     try {
       setError(null);
       
-      // Delete from users table
-      await supabase.from('users').delete().eq('id', userId);
-      
-      // Delete from Supabase Auth (requires service role key, so we'll just deactivate)
-      await supabase.from('users').update({ is_active: false }).eq('id', userId);
+      const res = await fetch(`/api/v1/users/${userId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed to delete user');
 
       setSuccess('User deleted successfully');
       loadUsers();
@@ -164,10 +132,13 @@ export default function UserManagementPage() {
   const handleToggleActive = async (userId: string, currentStatus: boolean) => {
     try {
       setError(null);
-      await supabase
-        .from('users')
-        .update({ is_active: !currentStatus })
-        .eq('id', userId);
+      const res = await fetch(`/api/v1/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !currentStatus }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed to update user status');
       
       setSuccess('User status updated successfully');
       loadUsers();
@@ -341,7 +312,6 @@ export default function UserManagementPage() {
                 >
                   <option value="Staff">Staff</option>
                   {canManageAdmins && <option value="Admin">Admin</option>}
-                  {canManageAdmins && <option value="Super Admin">Super Admin</option>}
                 </select>
               </div>
               <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">

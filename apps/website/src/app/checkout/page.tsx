@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '../../store/useCart';
 import { ShieldCheck, Upload, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@hazel/database';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -26,8 +27,52 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Dynamic Store Settings State
+  const [deliveryFee, setDeliveryFee] = useState(350);
+  const [bankDetails, setBankDetails] = useState({
+    bankName: 'Commercial Bank of Ceylon',
+    bankBranch: 'Colombo 03',
+    accountHolder: 'Hazel Clothing (PVT) Ltd',
+    accountNumber: '1000987654'
+  });
+
   useEffect(() => {
     setMounted(true);
+
+    async function loadStoreSettings() {
+      try {
+        // 1. Fetch delivery fee
+        const { data: delData } = await supabase
+          .from('content')
+          .select('data')
+          .eq('section_key', 'delivery_settings')
+          .maybeSingle();
+
+        if (delData && delData.data && typeof delData.data.delivery_fee === 'number') {
+          setDeliveryFee(delData.data.delivery_fee);
+        }
+
+        // 2. Fetch bank details
+        const { data: bankData } = await supabase
+          .from('content')
+          .select('data')
+          .eq('section_key', 'bank_details')
+          .maybeSingle();
+
+        if (bankData && bankData.data) {
+          setBankDetails({
+            bankName: bankData.data.bank_name || 'Commercial Bank of Ceylon',
+            bankBranch: bankData.data.bank_branch || 'Colombo 03',
+            accountHolder: bankData.data.account_holder || 'Hazel Clothing (PVT) Ltd',
+            accountNumber: bankData.data.account_number || '1000987654'
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load store settings:', err);
+      }
+    }
+
+    loadStoreSettings();
   }, []);
 
   if (!mounted) {
@@ -51,7 +96,6 @@ export default function CheckoutPage() {
   }
 
   const subtotal = getTotalPrice();
-  const deliveryFee = 350; // flat rate for Sri Lanka
   const total = subtotal + deliveryFee;
 
   // Handle image upload to Cloudinary using signed upload parameters
@@ -113,8 +157,8 @@ export default function CheckoutPage() {
     e.preventDefault();
     if (isSubmitting) return;
 
-    if (!name || !phone || !street || !city || !postalCode) {
-      setErrorMsg('Please fill in all required shipping and contact details.');
+    if (!name || !email || !phone || !street || !city || !postalCode) {
+      setErrorMsg('Please fill in all required shipping, email, and contact details.');
       return;
     }
 
@@ -210,9 +254,10 @@ export default function CheckoutPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-brand-secondary/70 uppercase">Email Address (Optional)</label>
+              <label className="text-xs font-bold text-brand-secondary/70 uppercase">Email Address *</label>
               <input
                 type="email"
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="minoli@gmail.com"
@@ -264,19 +309,19 @@ export default function CheckoutPage() {
             <div className="p-5 bg-brand-primary-cream border border-brand-primary-light/15 rounded space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-brand-secondary/60">Bank Name</span>
-                <span className="font-bold text-brand-secondary">Commercial Bank of Ceylon</span>
+                <span className="font-bold text-brand-secondary">{bankDetails.bankName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-brand-secondary/60">Branch</span>
-                <span className="font-bold text-brand-secondary">Colombo 03</span>
+                <span className="font-bold text-brand-secondary">{bankDetails.bankBranch}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-brand-secondary/60">Account Holder</span>
-                <span className="font-bold text-brand-secondary">Hazel Clothing (PVT) Ltd</span>
+                <span className="font-bold text-brand-secondary">{bankDetails.accountHolder}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-brand-secondary/60">Account Number</span>
-                <span className="font-bold text-brand-secondary">1000987654</span>
+                <span className="font-bold text-brand-secondary">{bankDetails.accountNumber}</span>
               </div>
             </div>
 

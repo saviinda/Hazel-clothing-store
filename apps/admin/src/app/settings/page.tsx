@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User, AuditLog } from '@hazel/shared';
-import { Loader2, Shield, Settings2, Trash2, Key, Users, History, RefreshCcw } from 'lucide-react';
+import { Loader2, Shield, Settings2, Trash2, Key, Users, History, RefreshCcw, Phone, LogOut } from 'lucide-react';
+import { logoutAllDevicesAction } from '@/app/actions/auth';
 
 export default function SettingsAndLogsPage() {
-  const [activeTab, setActiveTab] = useState<'users' | 'bank' | 'system' | 'audits'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'bank' | 'contact' | 'system' | 'audits'>('users');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -21,6 +22,14 @@ export default function SettingsAndLogsPage() {
   const [bankBranch, setBankBranch] = useState('Colombo 03');
   const [accountHolder, setAccountHolder] = useState('Hazel Clothing (PVT) Ltd');
   const [accountNumber, setAccountNumber] = useState('1000987654');
+  const [deliveryFee, setDeliveryFee] = useState('350');
+
+  // Contact Info State
+  const [contactEmail, setContactEmail] = useState('hello@hazelclothing.lk');
+  const [contactWhatsapp, setContactWhatsapp] = useState('94771234567');
+  const [contactInstagram, setContactInstagram] = useState('https://instagram.com/hazelclothing');
+  const [contactTiktok, setContactTiktok] = useState('https://tiktok.com/@hazelclothing');
+  const [savingContact, setSavingContact] = useState(false);
 
   const loadSettingsData = async () => {
     setLoading(true);
@@ -58,6 +67,31 @@ export default function SettingsAndLogsPage() {
         setAccountHolder(contentData.data.account_holder || '');
         setAccountNumber(contentData.data.account_number || '');
       }
+
+      // 4. Fetch current delivery settings
+      const { data: delData } = await supabase
+        .from('content')
+        .select('*')
+        .eq('section_key', 'delivery_settings')
+        .maybeSingle();
+
+      if (delData && delData.data) {
+        setDeliveryFee(String(delData.data.delivery_fee ?? '350'));
+      }
+
+      // 5. Fetch contact info
+      const { data: contactData } = await supabase
+        .from('content')
+        .select('*')
+        .eq('section_key', 'contact_info')
+        .maybeSingle();
+
+      if (contactData && contactData.data) {
+        setContactEmail(contactData.data.email || '');
+        setContactWhatsapp(contactData.data.whatsapp || '');
+        setContactInstagram(contactData.data.instagram || '');
+        setContactTiktok(contactData.data.tiktok || '');
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -81,9 +115,19 @@ export default function SettingsAndLogsPage() {
         account_number: accountNumber
       };
 
+      const feeNum = parseFloat(deliveryFee);
+      if (isNaN(feeNum) || feeNum < 0) {
+        throw new Error('Please enter a valid delivery fee.');
+      }
+
+      const deliveryPayload = {
+        delivery_fee: feeNum
+      };
+
       const userId = (await supabase.auth.getUser()).data.user?.id || null;
 
-      const { error } = await supabase
+      // 1. Save Bank Details
+      const { error: bankError } = await supabase
         .from('content')
         .upsert({
           section_key: 'bank_details',
@@ -92,21 +136,72 @@ export default function SettingsAndLogsPage() {
           updated_by: userId
         }, { onConflict: 'section_key' });
 
+      if (bankError) throw new Error(bankError.message);
+
+      // 2. Save Delivery settings
+      const { error: delError } = await supabase
+        .from('content')
+        .upsert({
+          section_key: 'delivery_settings',
+          data: deliveryPayload,
+          updated_at: new Date().toISOString(),
+          updated_by: userId
+        }, { onConflict: 'section_key' });
+
+      if (delError) throw new Error(delError.message);
+
+      await supabase.from('audit_logs').insert({
+        admin_id: userId,
+        action: 'edit_store_settings',
+        module: 'settings',
+        detail: { bankPayload, deliveryPayload }
+      });
+
+      alert('Store and delivery settings updated successfully!');
+      await loadSettingsData();
+    } catch (err: any) {
+      alert(err.message || 'Saving settings failed.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSaveContactInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingContact(true);
+    try {
+      const contactPayload = {
+        email: contactEmail,
+        whatsapp: contactWhatsapp,
+        instagram: contactInstagram,
+        tiktok: contactTiktok,
+      };
+
+      const userId = (await supabase.auth.getUser()).data.user?.id || null;
+
+      const { error } = await supabase
+        .from('content')
+        .upsert({
+          section_key: 'contact_info',
+          data: contactPayload,
+          updated_at: new Date().toISOString(),
+          updated_by: userId,
+        }, { onConflict: 'section_key' });
+
       if (error) throw new Error(error.message);
 
       await supabase.from('audit_logs').insert({
         admin_id: userId,
-        action: 'edit_bank_details',
+        action: 'edit_contact_info',
         module: 'settings',
-        detail: bankPayload
+        detail: contactPayload,
       });
 
-      alert('Bank transfer details updated successfully!');
-      await loadSettingsData();
+      alert('Contact information updated successfully!');
     } catch (err: any) {
-      alert(err.message || 'Saving bank details failed.');
+      alert(err.message || 'Saving contact info failed.');
     } finally {
-      setActionLoading(false);
+      setSavingContact(false);
     }
   };
 
@@ -148,6 +243,23 @@ export default function SettingsAndLogsPage() {
     }
   };
 
+  const handleLogoutAllDevices = async () => {
+    const doubleCheck = confirm(`Are you sure you want to log out from all devices? This will end all active sessions including this one.`);
+    if (!doubleCheck) return;
+
+    setActionLoading(true);
+    try {
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      if (userId) {
+        await logoutAllDevicesAction(userId);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Logout failed.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8 text-brand-secondary">
       {/* Settings Sub-Tabs */}
@@ -168,7 +280,16 @@ export default function SettingsAndLogsPage() {
           }`}
         >
           <Settings2 size={16} />
-          STORE BANK DETAILS
+          STORE & DELIVERY SETTINGS
+        </button>
+        <button
+          onClick={() => setActiveTab('contact')}
+          className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
+            activeTab === 'contact' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
+          }`}
+        >
+          <Phone size={16} />
+          CONTACT INFO
         </button>
         <button
           onClick={() => setActiveTab('audits')}
@@ -289,13 +410,102 @@ export default function SettingsAndLogsPage() {
             />
           </div>
 
+          {/* Delivery Fee Section */}
+          <div className="border-t border-brand-primary-light/10 pt-5 space-y-4">
+            <h5 className="font-serif text-base font-bold text-brand-secondary">Delivery Setup</h5>
+            <p className="text-xs text-brand-secondary/60 leading-relaxed font-semibold">
+              Set the island-wide delivery flat rate fee in LKR. This amount is automatically added during customer checkout.
+            </p>
+            <div className="space-y-1">
+              <label className="text-brand-secondary/65 uppercase">Flat Delivery Fee (LKR) *</label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                required
+                value={deliveryFee}
+                onChange={(e) => setDeliveryFee(e.target.value)}
+                className="w-full border rounded p-3 bg-white outline-none focus:border-brand-primary text-sm font-semibold"
+              />
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={actionLoading}
             className="w-full h-12 flex items-center justify-center gap-2 bg-brand-secondary hover:bg-brand-primary text-white font-bold text-xs tracking-widest rounded transition"
           >
             {actionLoading && <Loader2 className="animate-spin" size={14} />}
-            SAVE BANK DETAILS
+            SAVE SETTINGS
+          </button>
+        </form>
+      ) : activeTab === 'contact' ? (
+        /* 3. Contact Info Tab */
+        <form onSubmit={handleSaveContactInfo} className="max-w-lg bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-5 text-xs font-bold">
+          <h4 className="font-serif text-lg font-bold">Store Contact Information</h4>
+          <p className="text-xs text-brand-secondary/60 leading-relaxed font-semibold">
+            These details are displayed on the storefront Contact page. Changes are reflected within 30 seconds.
+          </p>
+
+          <div className="space-y-1">
+            <label className="text-brand-secondary/65 uppercase">Owner Email *</label>
+            <input
+              type="email"
+              required
+              value={contactEmail}
+              onChange={e => setContactEmail(e.target.value)}
+              placeholder="hello@hazelclothing.lk"
+              className="w-full border rounded p-3 bg-white outline-none focus:border-brand-primary text-sm font-semibold"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-brand-secondary/65 uppercase">WhatsApp Number *</label>
+            <div className="flex items-center border rounded bg-white focus-within:border-brand-primary">
+              <span className="px-3 py-3 text-sm text-brand-secondary/50 border-r border-zinc-200 bg-zinc-50 rounded-l">94</span>
+              <input
+                type="text"
+                required
+                value={contactWhatsapp}
+                onChange={e => setContactWhatsapp(e.target.value)}
+                placeholder="771234567 (digits only, no +)"
+                className="flex-1 p-3 bg-white outline-none text-sm font-semibold rounded-r"
+              />
+            </div>
+            <p className="text-[10px] text-brand-secondary/45">Enter the full number including country code (e.g. 94771234567)</p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-brand-secondary/65 uppercase">Instagram Profile URL *</label>
+            <input
+              type="url"
+              required
+              value={contactInstagram}
+              onChange={e => setContactInstagram(e.target.value)}
+              placeholder="https://instagram.com/yourusername"
+              className="w-full border rounded p-3 bg-white outline-none focus:border-brand-primary text-sm font-semibold"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-brand-secondary/65 uppercase">TikTok Profile URL *</label>
+            <input
+              type="url"
+              required
+              value={contactTiktok}
+              onChange={e => setContactTiktok(e.target.value)}
+              placeholder="https://tiktok.com/@yourusername"
+              className="w-full border rounded p-3 bg-white outline-none focus:border-brand-primary text-sm font-semibold"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={savingContact}
+            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-secondary hover:bg-brand-primary text-white font-bold text-xs tracking-widest rounded transition"
+          >
+            {savingContact && <Loader2 className="animate-spin" size={14} />}
+            SAVE CONTACT INFO
           </button>
         </form>
       ) : activeTab === 'audits' ? (
@@ -391,6 +601,22 @@ export default function SettingsAndLogsPage() {
                 className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs p-3 px-6 rounded transition"
               >
                 RESET CATALOG
+              </button>
+            </div>
+
+            {/* Logout All Devices */}
+            <div className="flex items-center justify-between p-4 border border-zinc-200 bg-zinc-50 rounded">
+              <div>
+                <h5 className="text-xs font-bold uppercase text-brand-secondary">Logout From All Devices</h5>
+                <p className="text-[11px] text-brand-secondary/60 font-semibold mt-1">Invalidates all active sessions across all browsers and devices.</p>
+              </div>
+              <button
+                onClick={handleLogoutAllDevices}
+                disabled={actionLoading}
+                className="flex items-center gap-2 bg-zinc-800 hover:bg-black text-white font-bold text-xs p-3 px-6 rounded transition"
+              >
+                <LogOut size={14} />
+                LOGOUT ALL
               </button>
             </div>
           </div>

@@ -17,7 +17,7 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-6 py-16 md:px-12">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
           <div className="space-y-4">
-            <Logo size="footer" href="/" />
+            <Logo size="footer" href="/" variant="dark" />
             <p className="text-sm leading-6 text-brand-primary-cream/60">
               Modern silhouettes, feminine tones, and trendy styles tailored for young Sri Lankan women.
               Follow us on Instagram & TikTok for daily fits!

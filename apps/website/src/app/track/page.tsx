@@ -33,9 +33,45 @@ function TrackContent() {
   const [isUploading, setIsUploading] = useState(false);
   const [receiptUploadedUrl, setReceiptUploadedUrl] = useState('');
 
+  // Dynamic Store Settings State
+  const [bankDetails, setBankDetails] = useState({
+    bankName: 'Commercial Bank of Ceylon',
+    bankBranch: 'Colombo 03',
+    accountHolder: 'Hazel Clothing (PVT) Ltd',
+    accountNumber: '1000987654'
+  });
+
+  useEffect(() => {
+    async function loadBankDetails() {
+      try {
+        const { data: bankData } = await supabase
+          .from('content')
+          .select('data')
+          .eq('section_key', 'bank_details')
+          .maybeSingle();
+
+        if (bankData && bankData.data) {
+          setBankDetails({
+            bankName: bankData.data.bank_name || 'Commercial Bank of Ceylon',
+            bankBranch: bankData.data.bank_branch || 'Colombo 03',
+            accountHolder: bankData.data.account_holder || 'Hazel Clothing (PVT) Ltd',
+            accountNumber: bankData.data.account_number || '1000987654'
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load bank details:', err);
+      }
+    }
+    loadBankDetails();
+  }, []);
+
   // Fetch order helper
   const fetchOrder = async (id: string) => {
     if (!id) return;
+    let cleanedId = id.trim();
+    if (cleanedId.startsWith('#')) {
+      cleanedId = cleanedId.substring(1).trim();
+    }
     setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
@@ -46,8 +82,9 @@ function TrackContent() {
           *,
           customer:customer_id (name, email, phone)
         `)
-        .eq('id', id)
+        .eq('id', cleanedId)
         .single();
+
 
       if (error || !data) {
         throw new Error('Order not found. Check the ID and try again.');
@@ -298,7 +335,7 @@ function TrackContent() {
               <div className="bg-brand-primary-light/5 border border-brand-primary-light/20 p-6 rounded space-y-4 md:col-span-2">
                 <h5 className="font-bold text-sm text-brand-secondary uppercase tracking-wider">Complete Bank Transfer Payment</h5>
                 <p className="text-xs text-brand-secondary/70 leading-relaxed">
-                  To verify your order, transfer LKR {Number(order.total_amount).toFixed(2)} to our Commercial Bank account (Acct: 1000987654, Colombo 03, Holder: Hazel Clothing (PVT) Ltd) and upload a screenshot of your payment receipt below.
+                  To verify your order, transfer LKR {Number(order.total_amount).toFixed(2)} to our {bankDetails.bankName} account (Acct: {bankDetails.accountNumber}, {bankDetails.bankBranch}, Holder: {bankDetails.accountHolder}) and upload a screenshot of your payment receipt below.
                 </p>
 
                 <div className="relative flex flex-col items-center justify-center border-2 border-dashed border-brand-primary-light/35 rounded p-6 bg-white hover:bg-gray-50/50 cursor-pointer">

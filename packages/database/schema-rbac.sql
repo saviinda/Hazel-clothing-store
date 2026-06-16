@@ -159,10 +159,7 @@ ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 -- Roles RLS
 CREATE POLICY roles_admin_all ON public.roles
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.is_active = true
-        )
+        public.check_user_active(auth.uid())
     );
 
 CREATE POLICY roles_public_read ON public.roles
@@ -171,10 +168,7 @@ CREATE POLICY roles_public_read ON public.roles
 -- Permissions RLS
 CREATE POLICY permissions_admin_all ON public.permissions
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.is_active = true
-        )
+        public.check_user_active(auth.uid())
     );
 
 CREATE POLICY permissions_public_read ON public.permissions
@@ -183,10 +177,7 @@ CREATE POLICY permissions_public_read ON public.permissions
 -- Role Permissions RLS
 CREATE POLICY role_permissions_admin_all ON public.role_permissions
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.is_active = true
-        )
+        public.check_user_active(auth.uid())
     );
 
 CREATE POLICY role_permissions_public_read ON public.role_permissions
@@ -195,10 +186,7 @@ CREATE POLICY role_permissions_public_read ON public.role_permissions
 -- User Roles RLS
 CREATE POLICY user_roles_admin_all ON public.user_roles
     FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.users
-            WHERE users.id = auth.uid() AND users.is_active = true
-        )
+        public.check_user_active(auth.uid())
     );
 
 CREATE POLICY user_roles_self_read ON public.user_roles

@@ -122,7 +122,7 @@ export default function CartPage() {
               </div>
             </div>
             <p className="mt-3 text-xs text-brand-secondary/50">
-              Island-wide delivery fee (LKR 350) added at checkout.
+              Island-wide delivery fee added at checkout.
             </p>
             <Link
               href="/checkout"
