@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import ProductCard from '../components/ProductCard';
+import HeroBanner from '../components/HeroBanner';
 import { supabase } from '@hazel/database';
 import { Product } from '@hazel/shared';
 
@@ -41,6 +42,9 @@ export default async function Home() {
 
   // Hero banner fallback values
   const bannerImage = heroBanner?.image_url || "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&auto=format&fit=crop&q=80";
+  const bannerMobileImages = Array.isArray(heroBanner?.mobile_image_urls)
+    ? heroBanner.mobile_image_urls.filter((url: unknown): url is string => typeof url === 'string' && url.length > 0)
+    : [];
   const bannerTitle = heroBanner?.title || "EMBRACE YOUR UNIQUE STYLE";
   const bannerSubtitle = heroBanner?.subtitle || "Discover modern silhouettes, delicate textures, and warm feminine tones tailored for young women.";
   const bannerCtaText = heroBanner?.cta_text || "SHOP NEW ARRIVALS";
@@ -48,38 +52,14 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col w-full pb-20">
-      {/* 1. Hero Banner */}
-      <section className="relative min-h-[70vh] sm:min-h-[85vh] w-full bg-brand-secondary overflow-hidden flex items-center justify-center">
-        <div className="absolute inset-0 bg-brand-secondary/40 z-10" />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-secondary/80 via-brand-secondary/30 to-brand-secondary/25 z-10" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(43,34,31,0.45)_0%,transparent_65%)] z-10" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={bannerImage}
-          alt="Hazel Clothing Hero"
-          className="absolute h-full w-full object-cover object-center z-0 scale-105 animate-[scale-up_20s_ease-out_infinite_alternate]"
-        />
-        <div className="relative z-20 flex flex-col items-center justify-center text-center px-6 md:px-12 max-w-4xl mx-auto w-full py-16 sm:py-20">
-          <span className="font-serif text-brand-primary-light text-sm sm:text-lg md:text-xl tracking-[0.25em] mb-5 font-light uppercase [text-shadow:0_1px_12px_rgba(43,34,31,0.6)]">
-            Hazel Boutique
-          </span>
-          <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-light tracking-wide text-brand-primary-cream leading-[1.15] max-w-3xl uppercase text-balance [text-shadow:0_2px_24px_rgba(43,34,31,0.75)]">
-            {bannerTitle}
-          </h1>
-          <p className="mt-6 sm:mt-7 text-brand-primary-cream/90 text-sm sm:text-base md:text-lg max-w-xl font-light tracking-wide leading-relaxed font-sans text-balance [text-shadow:0_1px_16px_rgba(43,34,31,0.65)]">
-            {bannerSubtitle}
-          </p>
-          <div className="mt-9 sm:mt-11">
-            <Link
-              href={bannerCtaLink}
-              className="relative inline-flex items-center justify-center overflow-hidden border border-brand-primary bg-brand-primary p-3 px-8 sm:p-4 sm:px-12 text-[11px] font-bold tracking-[0.2em] text-white transition duration-500 rounded-sm group"
-            >
-              <span className="relative z-10">{bannerCtaText}</span>
-              <div className="absolute inset-0 bg-brand-secondary scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500 z-0"></div>
-            </Link>
-          </div>
-        </div>
-      </section>
+      <HeroBanner
+        imageUrl={bannerImage}
+        mobileImageUrls={bannerMobileImages}
+        title={bannerTitle}
+        subtitle={bannerSubtitle}
+        ctaText={bannerCtaText}
+        ctaLink={bannerCtaLink}
+      />
 
       {/* 2. Trust Bar */}
       <section className="bg-white border-b border-brand-primary-light/10 py-8 sm:py-10">

@@ -32,7 +32,12 @@ INSERT INTO public.content (section_key, data) VALUES
   "subtitle": "Discover modern silhouettes and feminine tones designed for you.",
   "cta_text": "SHOP NEW ARRIVALS",
   "cta_link": "/shop",
-  "image_url": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&auto=format&fit=crop&q=80"
+  "image_url": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&auto=format&fit=crop&q=80",
+  "mobile_image_urls": [
+    "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&auto=format&fit=crop&q=80"
+  ]
 }'),
 ('trust_bar', '{
   "items": [

@@ -20,7 +20,9 @@ export default function ContentManagerPage() {
   const [heroCtaText, setHeroCtaText] = useState('SHOP NEW ARRIVALS');
   const [heroCtaLink, setHeroCtaLink] = useState('/shop');
   const [heroImageUrl, setHeroImageUrl] = useState('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&auto=format&fit=crop&q=80');
+  const [heroMobileImages, setHeroMobileImages] = useState<string[]>([]);
   const [uploadingHero, setUploadingHero] = useState(false);
+  const [uploadingMobileHero, setUploadingMobileHero] = useState(false);
 
   // ── Testimonials ──
   const [reviews, setReviews] = useState<any[]>([
@@ -52,6 +54,7 @@ export default function ContentManagerPage() {
           setHeroCtaText(hero.data.cta_text || '');
           setHeroCtaLink(hero.data.cta_link || '');
           setHeroImageUrl(hero.data.image_url || '');
+          setHeroMobileImages(Array.isArray(hero.data.mobile_image_urls) ? hero.data.mobile_image_urls : []);
         }
 
         const tests = contentData.find(c => c.section_key === 'testimonials');
@@ -94,38 +97,62 @@ export default function ContentManagerPage() {
   };
 
   // ── Hero image upload ──
+  const uploadHeroImage = async (file: File) => {
+    const signRes = await fetch('/api/v1/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder: 'hazel-clothing/banners' }),
+    });
+    if (!signRes.ok) throw new Error('Signature retrieval failed.');
+    const { signature, timestamp, apiKey, cloudName } = await signRes.json();
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('signature', signature);
+    formData.append('timestamp', timestamp.toString());
+    formData.append('api_key', apiKey);
+    formData.append('folder', 'hazel-clothing/banners');
+
+    const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!uploadRes.ok) throw new Error('Image upload failed.');
+    const uploadData = await uploadRes.json();
+    return uploadData.secure_url as string;
+  };
+
   const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingHero(true);
     try {
-      const signRes = await fetch('/api/v1/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folder: 'hazel-clothing/banners' }),
-      });
-      if (!signRes.ok) throw new Error('Signature retrieval failed.');
-      const { signature, timestamp, apiKey, cloudName } = await signRes.json();
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('signature', signature);
-      formData.append('timestamp', timestamp.toString());
-      formData.append('api_key', apiKey);
-      formData.append('folder', 'hazel-clothing/banners');
-
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-      if (!uploadRes.ok) throw new Error('Image upload failed.');
-      const uploadData = await uploadRes.json();
-      setHeroImageUrl(uploadData.secure_url);
+      setHeroImageUrl(await uploadHeroImage(file));
     } catch (err) {
       alert('Error uploading hero banner image.');
     } finally {
       setUploadingHero(false);
+      e.target.value = '';
     }
+  };
+
+  const handleMobileHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingMobileHero(true);
+    try {
+      const url = await uploadHeroImage(file);
+      setHeroMobileImages(prev => [...prev, url]);
+    } catch (err) {
+      alert('Error uploading mobile banner image.');
+    } finally {
+      setUploadingMobileHero(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeMobileHeroImage = (index: number) => {
+    setHeroMobileImages(prev => prev.filter((_, i) => i !== index));
   };
 
   // ── Save Hero ──
@@ -133,7 +160,14 @@ export default function ContentManagerPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const heroPayload = { title: heroTitle, subtitle: heroSubtitle, cta_text: heroCtaText, cta_link: heroCtaLink, image_url: heroImageUrl };
+      const heroPayload = {
+        title: heroTitle,
+        subtitle: heroSubtitle,
+        cta_text: heroCtaText,
+        cta_link: heroCtaLink,
+        image_url: heroImageUrl,
+        mobile_image_urls: heroMobileImages,
+      };
       const userId = (await supabase.auth.getUser()).data.user?.id || null;
       const { error } = await supabase.from('content').upsert(
         { section_key: 'hero_banner', data: heroPayload, updated_at: new Date().toISOString(), updated_by: userId },
@@ -328,7 +362,8 @@ export default function ContentManagerPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-brand-secondary/65 uppercase block">Banner Image Background</label>
+            <label className="text-brand-secondary/65 uppercase block">Desktop Banner Image</label>
+            <p className="text-[10px] text-brand-secondary/50 font-semibold normal-case">Shown on tablets and desktop (640px and wider).</p>
             <div className="flex items-center gap-4">
               <div className="h-24 w-40 border rounded overflow-hidden bg-gray-50 flex-shrink-0 flex items-center justify-center">
                 {heroImageUrl ? (
@@ -341,12 +376,47 @@ export default function ContentManagerPage() {
               <div className="relative border-2 border-dashed border-brand-primary-light/45 rounded p-6 flex-1 flex flex-col items-center justify-center text-xs bg-gray-50 hover:bg-gray-100 cursor-pointer">
                 <input type="file" accept="image/*" onChange={handleHeroImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                 <Upload size={18} className="text-brand-primary mb-1" />
-                <span className="font-bold">{uploadingHero ? 'Uploading...' : 'Upload Image (1920×800)'}</span>
+                <span className="font-bold">{uploadingHero ? 'Uploading...' : 'Upload Desktop Image (1920×800)'}</span>
               </div>
             </div>
           </div>
 
-          <button type="submit" disabled={saving || uploadingHero}
+          <div className="space-y-2">
+            <label className="text-brand-secondary/65 uppercase block">Mobile Banner Carousel</label>
+            <p className="text-[10px] text-brand-secondary/50 font-semibold normal-case">
+              Add 2 or more images for an auto-sliding carousel on phones. Swipe left/right to change slides. If empty, the desktop image is used on mobile.
+            </p>
+
+            {heroMobileImages.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {heroMobileImages.map((url, idx) => (
+                  <div key={`${url}-${idx}`} className="relative group border rounded overflow-hidden bg-gray-50 aspect-[4/5]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`Mobile slide ${idx + 1}`} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeMobileHeroImage(idx)}
+                      className="absolute top-1.5 right-1.5 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition"
+                      title="Remove image"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                    <span className="absolute bottom-1.5 left-1.5 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
+                      Slide {idx + 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="relative border-2 border-dashed border-brand-primary-light/45 rounded p-6 flex flex-col items-center justify-center text-xs bg-gray-50 hover:bg-gray-100 cursor-pointer">
+              <input type="file" accept="image/*" onChange={handleMobileHeroImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+              <Plus size={18} className="text-brand-primary mb-1" />
+              <span className="font-bold">{uploadingMobileHero ? 'Uploading...' : 'Add Mobile Carousel Image (1080×1350)'}</span>
+            </div>
+          </div>
+
+          <button type="submit" disabled={saving || uploadingHero || uploadingMobileHero}
             className="w-full h-12 flex items-center justify-center gap-2 bg-brand-secondary hover:bg-brand-primary text-white font-bold text-xs tracking-widest rounded transition">
             {saving && <Loader2 className="animate-spin" size={14} />}
             <Save size={16} /> SAVE HERO CONFIG
