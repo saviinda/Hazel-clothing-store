@@ -150,49 +150,51 @@ export default function InventoryPage() {
           {/* Stock Table */}
           <div className="lg:col-span-8 bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm">
             <h4 className="font-serif text-lg font-bold mb-6">Current Stock Levels</h4>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase">
-                    <th className="py-4">Product Name</th>
-                    <th>Sizes</th>
-                    <th>Colors</th>
-                    <th>Current Stock</th>
-                    <th>Alert Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-brand-primary-light/5 font-semibold">
-                  {products.map((p) => {
-                    const lowStock = p.stock_qty <= 5;
-                    const outStock = p.stock_qty <= 0;
-                    return (
-                      <tr key={p.id} className="hover:bg-zinc-50/50">
-                        <td className="py-4 font-bold">{p.name}</td>
-                        <td className="text-xs text-brand-secondary/60">{p.sizes.join(', ')}</td>
-                        <td className="text-xs text-brand-secondary/60">{p.colors.join(', ')}</td>
-                        <td className={`font-bold ${outStock ? 'text-red-600' : lowStock ? 'text-yellow-600' : 'text-brand-secondary'}`}>
-                          {p.stock_qty} units
-                        </td>
-                        <td>
-                          {outStock ? (
-                            <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-800">
-                              <AlertCircle size={12} /> Out of Stock
-                            </span>
-                          ) : lowStock ? (
-                            <span className="inline-flex items-center gap-1 rounded bg-yellow-100 px-2.5 py-0.5 text-xs font-bold text-yellow-800">
-                              <AlertCircle size={12} /> Low Stock
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-800">
-                              Healthy
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="overflow-x-auto -mx-6 px-6">
+              <div className="min-w-[700px]">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase">
+                      <th className="py-4 px-2">Product Name</th>
+                      <th className="px-2">Sizes</th>
+                      <th className="px-2">Colors</th>
+                      <th className="px-2">Current Stock</th>
+                      <th className="px-2">Alert Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-brand-primary-light/5 font-semibold">
+                    {products.map((p) => {
+                      const lowStock = p.stock_qty <= 5;
+                      const outStock = p.stock_qty <= 0;
+                      return (
+                        <tr key={p.id} className="hover:bg-zinc-50/50">
+                          <td className="py-4 px-2 font-bold">{p.name}</td>
+                          <td className="px-2 text-xs text-brand-secondary/60">{p.sizes.join(', ')}</td>
+                          <td className="px-2 text-xs text-brand-secondary/60">{p.colors.join(', ')}</td>
+                          <td className={`px-2 font-bold ${outStock ? 'text-red-600' : lowStock ? 'text-yellow-600' : 'text-brand-secondary'}`}>
+                            {p.stock_qty} units
+                          </td>
+                          <td className="px-2">
+                            {outStock ? (
+                              <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-800">
+                                <AlertCircle size={12} /> Out of Stock
+                              </span>
+                            ) : lowStock ? (
+                              <span className="inline-flex items-center gap-1 rounded bg-yellow-100 px-2.5 py-0.5 text-xs font-bold text-yellow-800">
+                                <AlertCircle size={12} /> Low Stock
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-800">
+                                Healthy
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Loader2, Save, Upload, Plus, Trash2, Star, StarOff, Image as ImageIcon } from 'lucide-react';
 
-type Tab = 'new_arrivals' | 'hero' | 'testimonials';
+type Tab = 'new_arrivals' | 'hero' | 'testimonials' | 'size_guide';
 
 export default function ContentManagerPage() {
   const [activeTab, setActiveTab] = useState<Tab>('new_arrivals');
@@ -31,6 +31,12 @@ export default function ContentManagerPage() {
     { name: 'Sanduni P.', comment: 'Order procedure was very easy. Just uploaded my bank receipt and order status updated on the tracking link in 1 hour.', rating: 5 },
   ]);
 
+  // ── Size Guide ──
+  const [sizeGuideImages, setSizeGuideImages] = useState<Record<string, string>>({});
+  const [uploadingSizeGuide, setUploadingSizeGuide] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [categories, setCategories] = useState<any[]>([]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -43,6 +49,14 @@ export default function ContentManagerPage() {
         .order('created_at', { ascending: false });
 
       if (prodData) setAllProducts(prodData);
+
+      // Load all categories
+      const { data: catData } = await supabase
+        .from('categories')
+        .select('id, name')
+        .order('name', { ascending: true });
+
+      if (catData) setCategories(catData);
 
       // Load content sections
       const { data: contentData } = await supabase.from('content').select('*');
@@ -59,6 +73,9 @@ export default function ContentManagerPage() {
 
         const tests = contentData.find(c => c.section_key === 'testimonials');
         if (tests?.data?.reviews) setReviews(tests.data.reviews);
+
+        const sizeGuide = contentData.find(c => c.section_key === 'size_guide');
+        if (sizeGuide?.data?.images) setSizeGuideImages(sizeGuide.data.images);
       }
     } catch (err) {
       console.error(err);
@@ -211,6 +228,42 @@ export default function ContentManagerPage() {
     setReviews(updated);
   };
 
+  // ── Size Guide upload ──
+  const handleSizeGuideImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedCategory) return;
+    setUploadingSizeGuide(true);
+    try {
+      const url = await uploadHeroImage(file);
+      setSizeGuideImages(prev => ({ ...prev, [selectedCategory]: url }));
+    } catch (err) {
+      alert('Error uploading size guide image.');
+    } finally {
+      setUploadingSizeGuide(false);
+      e.target.value = '';
+    }
+  };
+
+  // ── Save Size Guide ──
+  const handleSaveSizeGuide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const userId = (await supabase.auth.getUser()).data.user?.id || null;
+      const { error } = await supabase.from('content').upsert(
+        { section_key: 'size_guide', data: { images: sizeGuideImages }, updated_at: new Date().toISOString(), updated_by: userId },
+        { onConflict: 'section_key' }
+      );
+      if (error) throw new Error(error.message);
+      await supabase.from('audit_logs').insert({ admin_id: userId, action: 'edit_size_guide', module: 'content', detail: { categories_count: Object.keys(sizeGuideImages).length } });
+      alert('Size Guide updated successfully!');
+    } catch (err: any) {
+      alert(err.message || 'Saving size guide failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const featuredProducts = allProducts.filter(p => p.is_featured);
 
   if (loading) {
@@ -229,6 +282,7 @@ export default function ContentManagerPage() {
           { key: 'new_arrivals', label: 'NEW ARRIVALS', icon: Star },
           { key: 'hero', label: 'HERO BANNER', icon: ImageIcon },
           { key: 'testimonials', label: 'TESTIMONIALS', icon: Save },
+          { key: 'size_guide', label: 'SIZE GUIDE', icon: ImageIcon },
         ] as { key: Tab; label: string; icon: any }[]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -263,51 +317,52 @@ export default function ContentManagerPage() {
           </div>
 
           <div className="bg-white border border-brand-primary-light/10 rounded shadow-sm">
-            <div className="table-scroll-wrap">
-            <table className="w-full min-w-[560px] text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase bg-zinc-50/50">
-                  <th className="py-3 px-4">Image</th>
-                  <th className="py-3 px-4">Product</th>
-                  <th className="py-3 px-4">Price</th>
-                  <th className="py-3 px-4">Sizes</th>
-                  <th className="py-3 px-4 text-center">New Arrival</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-brand-primary-light/5">
-                {allProducts.length > 0 ? allProducts.map(p => (
-                  <tr key={p.id} className={`hover:bg-zinc-50/50 transition ${p.is_featured ? 'bg-yellow-50/30' : ''}`}>
-                    <td className="py-3 px-4">
-                      <div className="h-12 w-9 rounded overflow-hidden bg-gray-50 border">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="h-full w-full object-cover" />
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="font-bold">{p.name}</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {(p.colors || []).slice(0, 3).map((c: string) => (
-                          <span key={c} className="text-[9px] bg-zinc-100 text-zinc-600 px-1.5 py-0.5 rounded-full">{c}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-semibold">LKR {Number(p.price).toFixed(2)}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-wrap gap-1">
-                        {(p.sizes || []).map((s: string) => (
-                          <span key={s} className="text-[10px] bg-brand-primary-light/20 text-brand-primary font-bold px-1.5 py-0.5 rounded-full">{s}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => toggleFeatured(p.id, p.is_featured)}
-                        title={p.is_featured ? 'Remove from New Arrivals' : 'Add to New Arrivals'}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold transition ${
-                          p.is_featured
-                            ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border border-yellow-300'
-                            : 'bg-zinc-100 text-zinc-500 hover:bg-brand-primary hover:text-white border border-zinc-200'
-                        }`}
+            <div className="overflow-x-auto -mx-6 px-6">
+              <div className="min-w-[600px]">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase bg-zinc-50/50">
+                      <th className="py-3 px-2">Image</th>
+                      <th className="py-3 px-2">Product</th>
+                      <th className="py-3 px-2">Price</th>
+                      <th className="py-3 px-2">Sizes</th>
+                      <th className="py-3 px-2 text-center">New Arrival</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-brand-primary-light/5">
+                    {allProducts.length > 0 ? allProducts.map(p => (
+                      <tr key={p.id} className={`hover:bg-zinc-50/50 transition ${p.is_featured ? 'bg-yellow-50/30' : ''}`}>
+                        <td className="py-3 px-2">
+                          <div className="h-12 w-9 rounded overflow-hidden bg-gray-50 border">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={p.images?.[0] || '/placeholder.jpg'} alt={p.name} className="h-full w-full object-cover" />
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <p className="font-bold">{p.name}</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {(p.colors || []).slice(0, 3).map((c: string) => (
+                              <span key={c} className="text-[9px] bg-zinc-100 text-zinc-600 px-1.5 py-0.5 rounded-full">{c}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 font-semibold">LKR {Number(p.price).toFixed(2)}</td>
+                        <td className="py-3 px-2">
+                          <div className="flex flex-wrap gap-1">
+                            {(p.sizes || []).map((s: string) => (
+                              <span key={s} className="text-[10px] bg-brand-primary-light/20 text-brand-primary font-bold px-1.5 py-0.5 rounded-full">{s}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <button
+                            onClick={() => toggleFeatured(p.id, p.is_featured)}
+                            title={p.is_featured ? 'Remove from New Arrivals' : 'Add to New Arrivals'}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold transition ${
+                              p.is_featured
+                                ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border border-yellow-300'
+                                : 'bg-zinc-100 text-zinc-500 hover:bg-brand-primary hover:text-white border border-zinc-200'
+                            }`}
                       >
                         {p.is_featured ? (
                           <><Star size={13} className="fill-yellow-500 text-yellow-500" /> Featured</>
@@ -326,6 +381,7 @@ export default function ContentManagerPage() {
                 )}
               </tbody>
             </table>
+              </div>
             </div>
           </div>
         </div>
@@ -467,6 +523,86 @@ export default function ContentManagerPage() {
             className="w-full h-12 flex items-center justify-center gap-2 bg-brand-secondary hover:bg-brand-primary text-white font-bold text-xs tracking-widest rounded transition">
             {saving && <Loader2 className="animate-spin" size={14} />}
             <Save size={16} /> SAVE TESTIMONIALS
+          </button>
+        </form>
+      )}
+
+      {/* ── Tab: Size Guide ── */}
+      {activeTab === 'size_guide' && (
+        <form onSubmit={handleSaveSizeGuide} className="max-w-2xl bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-5 text-xs font-bold">
+          <h4 className="font-serif text-lg font-bold">Category-wise Size Guide Images</h4>
+          <p className="text-[10px] text-brand-secondary/50 font-semibold normal-case">
+            Upload size guide charts for each product category. These will be displayed when customers click the "Size Guide" button on product pages.
+          </p>
+
+          <div className="space-y-2">
+            <label className="text-brand-secondary/65 uppercase block">Select Category</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full border rounded p-3 bg-white outline-none focus:border-brand-primary cursor-pointer text-sm font-semibold"
+            >
+              <option value="">-- Select a category --</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {selectedCategory && (
+            <div className="space-y-2">
+              <label className="text-brand-secondary/65 uppercase block">
+                Size Guide Image for {categories.find(c => c.id === selectedCategory)?.name || selectedCategory}
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="h-40 w-40 border rounded overflow-hidden bg-gray-50 flex-shrink-0 flex items-center justify-center">
+                  {sizeGuideImages[selectedCategory] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={sizeGuideImages[selectedCategory]} alt="Size Guide preview" className="h-full w-full object-contain" />
+                  ) : (
+                    <span className="text-[10px] text-zinc-300">No image</span>
+                  )}
+                </div>
+                <div className="relative border-2 border-dashed border-brand-primary-light/45 rounded p-6 flex-1 flex flex-col items-center justify-center text-xs bg-gray-50 hover:bg-gray-100 cursor-pointer">
+                  <input type="file" accept="image/*" onChange={handleSizeGuideImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  <Upload size={18} className="text-brand-primary mb-1" />
+                  <span className="font-bold">{uploadingSizeGuide ? 'Uploading...' : 'Upload Size Guide Image'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label className="text-brand-secondary/65 uppercase block">Uploaded Size Guides</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {Object.entries(sizeGuideImages).map(([category, url]) => (
+                <div key={category} className="relative border rounded overflow-hidden bg-gray-50 aspect-square">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={`Size guide for ${categories.find(c => c.id === category)?.name || category}`} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuideImages(prev => {
+                      const updated = { ...prev };
+                      delete updated[category];
+                      return updated;
+                    })}
+                    className="absolute top-1.5 right-1.5 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition"
+                    title="Remove image"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                  <span className="absolute bottom-1.5 left-1.5 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
+                    {categories.find(c => c.id === category)?.name || category}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button type="submit" disabled={saving || uploadingSizeGuide}
+            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-secondary hover:bg-brand-primary text-white font-bold text-xs tracking-widest rounded transition">
+            {saving && <Loader2 className="animate-spin" size={14} />}
+            <Save size={16} /> SAVE SIZE GUIDES
           </button>
         </form>
       )}

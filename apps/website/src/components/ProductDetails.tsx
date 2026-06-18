@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product } from '@hazel/shared';
 import { useCart } from '../store/useCart';
-import { ShoppingBag, ChevronRight, ShieldCheck, Truck, RefreshCw } from 'lucide-react';
+import { ShoppingBag, ChevronRight, ShieldCheck, Truck, RefreshCw, X } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface ProductDetailsProps {
   product: Product;
@@ -16,6 +17,26 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
   const [activeImage, setActiveImage] = useState(product.images[0] || '/placeholder.jpg');
   const [quantity, setQuantity] = useState(1);
   const [addedMessage, setAddedMessage] = useState(false);
+  const [sizeGuideImageUrl, setSizeGuideImageUrl] = useState('');
+  const [showSizeGuideModal, setShowSizeGuideModal] = useState(false);
+
+  useEffect(() => {
+    async function loadSizeGuide() {
+      try {
+        const { data } = await supabase
+          .from('content')
+          .select('data')
+          .eq('section_key', 'size_guide')
+          .single();
+        if (data?.data?.images && product.category_id) {
+          setSizeGuideImageUrl(data.data.images[product.category_id] || '');
+        }
+      } catch (err) {
+        console.error('Error loading size guide:', err);
+      }
+    }
+    loadSizeGuide();
+  }, [product.category_id]);
 
   const handleAddToCart = () => {
     addItem({
@@ -86,7 +107,14 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
             <span className="font-bold text-brand-secondary">Select Size</span>
-            <button className="text-xs text-brand-primary font-semibold hover:underline">Size Guide</button>
+            {sizeGuideImageUrl && (
+              <button
+                onClick={() => setShowSizeGuideModal(true)}
+                className="text-xs text-brand-primary font-semibold hover:underline"
+              >
+                Size Guide
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {product.sizes.map((size) => (
@@ -212,6 +240,32 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
           </div>
         </div>
       </div>
+
+      {/* Size Guide Modal */}
+      {showSizeGuideModal && sizeGuideImageUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowSizeGuideModal(false)} />
+          <div className="relative bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <button
+              onClick={() => setShowSizeGuideModal(false)}
+              className="absolute top-4 right-4 z-10 p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition"
+            >
+              <X size={20} className="text-brand-secondary" />
+            </button>
+            <div className="p-6">
+              <h3 className="font-serif text-2xl font-bold text-brand-secondary mb-4">Size Guide</h3>
+              <div className="overflow-auto max-h-[70vh]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={sizeGuideImageUrl}
+                  alt="Size Guide"
+                  className="w-full h-auto object-contain"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -195,53 +195,54 @@ export default function CategoriesPage() {
           <Loader2 className="animate-spin text-brand-primary" size={32} />
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase">
-                <th className="py-4 w-16">Image</th>
-                <th>Category Name</th>
-                <th>Slug</th>
-                <th>Type</th>
-                <th>Visibility</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brand-primary-light/5 font-semibold">
-              {filteredCategories.length > 0 ? (
-                filteredCategories.map((c) => {
-                  const parentName = categories.find((pc) => pc.id === c.parent_category_id)?.name;
-                  return (
-                    <tr key={c.id} className="hover:bg-zinc-50/50">
-                      <td className="py-4">
-                        <div className="h-10 w-10 rounded overflow-hidden bg-gray-50 border">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={c.image_url || '/placeholder.jpg'} alt={c.name} className="h-full w-full object-cover" />
-                        </div>
-                      </td>
-                      <td className="font-bold">{c.name}</td>
-                      <td className="font-mono text-xs">{c.slug}</td>
-                      <td>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                          parentName ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
-                        }`}>
-                          {parentName ? `Subcategory (of ${parentName})` : 'Parent Category'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                          c.is_active ? 'bg-green-100 text-green-800' : 'bg-zinc-100 text-zinc-800'
-                        }`}>
-                          {c.is_active ? 'Visible' : 'Hidden'}
-                        </span>
-                      </td>
-                      <td className="text-right space-x-2">
-                        <button
-                          onClick={() => openEditModal(c)}
-                          className="p-1 px-3 text-xs bg-brand-primary-light/20 hover:bg-brand-primary hover:text-white text-brand-primary font-bold rounded transition"
-                        >
-                          Edit
-                        </button>
+        <div className="overflow-x-auto -mx-6 px-6">
+          <div className="min-w-[700px]">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase">
+                  <th className="py-4 px-2 w-16">Image</th>
+                  <th className="px-2">Category Name</th>
+                  <th className="px-2">Slug</th>
+                  <th className="px-2">Type</th>
+                  <th className="px-2">Visibility</th>
+                  <th className="px-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brand-primary-light/5 font-semibold">
+                {filteredCategories.length > 0 ? (
+                  filteredCategories.map((c) => {
+                    const parentName = categories.find((pc) => pc.id === c.parent_category_id)?.name;
+                    return (
+                      <tr key={c.id} className="hover:bg-zinc-50/50">
+                        <td className="py-4 px-2">
+                          <div className="h-10 w-10 rounded overflow-hidden bg-gray-50 border">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={c.image_url || '/placeholder.jpg'} alt={c.name} className="h-full w-full object-cover" />
+                          </div>
+                        </td>
+                        <td className="px-2 font-bold">{c.name}</td>
+                        <td className="px-2 font-mono text-xs">{c.slug}</td>
+                        <td className="px-2">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            parentName ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {parentName ? `Subcategory (of ${parentName})` : 'Parent Category'}
+                          </span>
+                        </td>
+                        <td className="px-2">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                            c.is_active ? 'bg-green-100 text-green-800' : 'bg-zinc-100 text-zinc-800'
+                          }`}>
+                            {c.is_active ? 'Visible' : 'Hidden'}
+                          </span>
+                        </td>
+                        <td className="px-2 text-right space-x-2">
+                          <button
+                            onClick={() => openEditModal(c)}
+                            className="p-1 px-3 text-xs bg-brand-primary-light/20 hover:bg-brand-primary hover:text-white text-brand-primary font-bold rounded transition"
+                          >
+                            Edit
+                          </button>
                         <button
                           onClick={() => handleDelete(c.id)}
                           className="p-1 px-3 text-xs bg-red-50 hover:bg-red-600 hover:text-white text-red-600 font-bold rounded transition"
@@ -261,7 +262,8 @@ export default function CategoriesPage() {
               )}
             </tbody>
           </table>
-        </div>
+              </div>
+            </div>
       )}
 
       {/* Pop-up Modals */}

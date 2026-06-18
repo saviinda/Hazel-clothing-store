@@ -43,7 +43,7 @@ function NavLink({
 }
 
 export default function Header() {
-  const { getTotalItems } = useCart();
+  const items = useCart((state) => state.items);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -56,7 +56,7 @@ export default function Header() {
     return () => document.body.classList.remove('mobile-menu-open');
   }, [isMenuOpen]);
 
-  const totalItemsCount = mounted ? getTotalItems() : 0;
+  const totalItemsCount = mounted ? items.reduce((total, item) => total + item.qty, 0) : 0;
 
   return (
     <>
@@ -84,7 +84,7 @@ export default function Header() {
             >
               <ShoppingBag size={22} />
               {totalItemsCount > 0 && (
-                <span className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-accent text-white text-[10px] font-bold">
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-accent text-white text-[10px] font-bold border-2 border-brand-primary-cream">
                   {totalItemsCount}
                 </span>
               )}

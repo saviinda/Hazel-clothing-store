@@ -117,69 +117,71 @@ export default function OrdersListPage() {
         </div>
       ) : (
         /* Orders Table */
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase">
-                <th className="py-4">Order ID</th>
-                <th>Customer Name</th>
-                <th>Contact Phone</th>
-                <th>Total</th>
-                <th>Payment</th>
-                <th>Order Status</th>
-                <th>Date Placed</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brand-primary-light/5 text-brand-secondary font-semibold">
-              {filteredOrders.length > 0 ? (
-                filteredOrders.map((ord) => (
-                  <tr key={ord.id} className="hover:bg-zinc-50/50">
-                    <td className="py-4 font-mono text-xs">#{ord.id.slice(0, 8)}...</td>
-                    <td>{(ord as any).customer?.name || 'Guest'}</td>
-                    <td>{(ord as any).customer?.phone || 'N/A'}</td>
-                    <td>LKR {Number(ord.total_amount).toFixed(2)}</td>
-                    <td>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                        ord.payment_status === 'Verified' ? 'bg-green-100 text-green-800' :
-                        ord.payment_status === 'Uploaded' ? 'bg-blue-100 text-blue-800 animate-pulse' :
-                        ord.payment_status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {ord.payment_status}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                        ord.order_status === 'Completed' ? 'bg-green-50 text-green-700 border border-green-200' :
-                        ord.order_status === 'Pending Payment' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
-                        ord.order_status === 'Payment Verification' ? 'bg-blue-50 text-blue-700 border border-blue-200 animate-pulse' :
-                        'bg-zinc-100 text-zinc-800'
-                      }`}>
-                        {ord.order_status}
-                      </span>
-                    </td>
-                    <td className="text-xs text-brand-secondary/60">{new Date(ord.created_at).toLocaleDateString()}</td>
-                    <td className="text-right">
-                      <Link
-                        href={`/orders/${ord.id}`}
-                        className="inline-flex items-center gap-1 bg-brand-primary-light/20 hover:bg-brand-primary hover:text-white transition text-xs font-bold p-1 px-3 rounded text-brand-primary"
-                      >
-                        Verify
-                        <ChevronRight size={12} />
-                      </Link>
+        <div className="overflow-x-auto -mx-6 px-6">
+          <div className="min-w-[800px]">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase">
+                  <th className="py-4 px-2">Order ID</th>
+                  <th className="px-2">Customer Name</th>
+                  <th className="px-2">Contact Phone</th>
+                  <th className="px-2">Total</th>
+                  <th className="px-2">Payment</th>
+                  <th className="px-2">Order Status</th>
+                  <th className="px-2">Date Placed</th>
+                  <th className="px-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brand-primary-light/5 text-brand-secondary font-semibold">
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map((ord) => (
+                    <tr key={ord.id} className="hover:bg-zinc-50/50">
+                      <td className="py-4 px-2 font-mono text-xs">#{ord.id.slice(0, 8)}...</td>
+                      <td className="px-2">{(ord as any).customer?.name || 'Guest'}</td>
+                      <td className="px-2">{(ord as any).customer?.phone || 'N/A'}</td>
+                      <td className="px-2">LKR {Number(ord.total_amount).toFixed(2)}</td>
+                      <td className="px-2">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                          ord.payment_status === 'Verified' ? 'bg-green-100 text-green-800' :
+                          ord.payment_status === 'Uploaded' ? 'bg-blue-100 text-blue-800 animate-pulse' :
+                          ord.payment_status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {ord.payment_status}
+                        </span>
+                      </td>
+                      <td className="px-2">
+                        <span className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                          ord.order_status === 'Completed' ? 'bg-green-50 text-green-700 border border-green-200' :
+                          ord.order_status === 'Pending Payment' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                          ord.order_status === 'Payment Verification' ? 'bg-blue-50 text-blue-700 border border-blue-200 animate-pulse' :
+                          'bg-zinc-100 text-zinc-800'
+                        }`}>
+                          {ord.order_status}
+                        </span>
+                      </td>
+                      <td className="px-2 text-xs text-brand-secondary/60">{new Date(ord.created_at).toLocaleDateString()}</td>
+                      <td className="px-2 text-right">
+                        <Link
+                          href={`/orders/${ord.id}`}
+                          className="inline-flex items-center gap-1 bg-brand-primary-light/20 hover:bg-brand-primary hover:text-white transition text-xs font-bold p-1 px-3 rounded text-brand-primary"
+                        >
+                          Verify
+                          <ChevronRight size={12} />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-brand-secondary/50 font-bold">
+                      No orders found matching search criteria.
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-brand-secondary/50 font-bold">
-                    No orders found matching search criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
