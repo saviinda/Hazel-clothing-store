@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Save, Upload, Plus, Trash2, Star, StarOff, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Save, Upload, Plus, Trash2, Star, StarOff, Image as ImageIcon, Video, Play, Pause, Eye, EyeOff, Edit } from 'lucide-react';
 
-type Tab = 'new_arrivals' | 'hero' | 'testimonials' | 'size_guide';
+type Tab = 'new_arrivals' | 'hero' | 'testimonials' | 'size_guide' | 'video_feed';
 
 export default function ContentManagerPage() {
   const [activeTab, setActiveTab] = useState<Tab>('new_arrivals');
@@ -36,6 +36,17 @@ export default function ContentManagerPage() {
   const [uploadingSizeGuide, setUploadingSizeGuide] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [categories, setCategories] = useState<any[]>([]);
+
+  // ── Video Feed ──
+  const [videos, setVideos] = useState<any[]>([]);
+  const [isEditingVideo, setIsEditingVideo] = useState(false);
+  const [editingVideoIndex, setEditingVideoIndex] = useState<number | null>(null);
+  const [videoTitle, setVideoTitle] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoThumbnailUrl, setVideoThumbnailUrl] = useState('');
+  const [videoIsEnabled, setVideoIsEnabled] = useState(true);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingVideoThumb, setUploadingVideoThumb] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -76,6 +87,9 @@ export default function ContentManagerPage() {
 
         const sizeGuide = contentData.find(c => c.section_key === 'size_guide');
         if (sizeGuide?.data?.images) setSizeGuideImages(sizeGuide.data.images);
+
+        const vFeed = contentData.find(c => c.section_key === 'video_feed');
+        if (vFeed?.data?.videos) setVideos(vFeed.data.videos);
       }
     } catch (err) {
       console.error(err);
@@ -264,6 +278,144 @@ export default function ContentManagerPage() {
     }
   };
 
+  // ── Video Feed CRUD Operations ──
+
+  const saveVideos = async (videoList: any[]) => {
+    setSaving(true);
+    try {
+      const userId = (await supabase.auth.getUser()).data.user?.id || null;
+      const { error } = await supabase.from('content').upsert(
+        { section_key: 'video_feed', data: { videos: videoList }, updated_at: new Date().toISOString(), updated_by: userId },
+        { onConflict: 'section_key' }
+      );
+      if (error) throw new Error(error.message);
+      await supabase.from('audit_logs').insert({ admin_id: userId, action: 'edit_video_feed', module: 'content', detail: { videos_count: videoList.length } });
+    } catch (err: any) {
+      alert('Failed to save video changes: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingVideo(true);
+    try {
+      const signRes = await fetch('/api/v1/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder: 'hazel-clothing/videos' }),
+      });
+      if (!signRes.ok) throw new Error('Signature retrieval failed.');
+      const { signature, timestamp, apiKey, cloudName } = await signRes.json();
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('signature', signature);
+      formData.append('timestamp', timestamp.toString());
+      formData.append('api_key', apiKey);
+      formData.append('folder', 'hazel-clothing/videos');
+
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!uploadRes.ok) throw new Error('Video upload failed.');
+      const uploadData = await uploadRes.json();
+      setVideoUrl(uploadData.secure_url);
+      
+      // Auto generate a matching thumbnail url by default if none is set
+      if (!videoThumbnailUrl) {
+        const autoThumb = uploadData.secure_url.replace(/\.[^/.]+$/, '') + '.jpg';
+        setVideoThumbnailUrl(autoThumb);
+      }
+    } catch (err: any) {
+      alert('Error uploading video: ' + err.message);
+    } finally {
+      setUploadingVideo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleVideoThumbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingVideoThumb(true);
+    try {
+      const url = await uploadHeroImage(file);
+      setVideoThumbnailUrl(url);
+    } catch (err: any) {
+      alert('Error uploading thumbnail: ' + err.message);
+    } finally {
+      setUploadingVideoThumb(false);
+      e.target.value = '';
+    }
+  };
+
+  const toggleVideoEnabled = async (idx: number) => {
+    const updated = [...videos];
+    updated[idx].is_enabled = !updated[idx].is_enabled;
+    setVideos(updated);
+    await saveVideos(updated);
+  };
+
+  const handleOpenAddVideo = () => {
+    setEditingVideoIndex(null);
+    setVideoTitle('');
+    setVideoUrl('');
+    setVideoThumbnailUrl('');
+    setVideoIsEnabled(true);
+    setIsEditingVideo(true);
+  };
+
+  const handleOpenEditVideo = (idx: number) => {
+    const v = videos[idx];
+    setEditingVideoIndex(idx);
+    setVideoTitle(v.title || '');
+    setVideoUrl(v.video_url || '');
+    setVideoThumbnailUrl(v.thumbnail_url || '');
+    setVideoIsEnabled(v.is_enabled !== false);
+    setIsEditingVideo(true);
+  };
+
+  const handleSaveVideoItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!videoUrl || !videoTitle) {
+      alert('Please fill in a title and upload a video.');
+      return;
+    }
+
+    const videoItem = {
+      id: editingVideoIndex !== null ? videos[editingVideoIndex].id : crypto.randomUUID(),
+      title: videoTitle,
+      video_url: videoUrl,
+      thumbnail_url: videoThumbnailUrl,
+      is_enabled: videoIsEnabled,
+      created_at: editingVideoIndex !== null ? videos[editingVideoIndex].created_at : new Date().toISOString()
+    };
+
+    let updated = [...videos];
+    if (editingVideoIndex !== null) {
+      updated[editingVideoIndex] = videoItem;
+    } else {
+      updated.push(videoItem);
+    }
+
+    setVideos(updated);
+    setIsEditingVideo(false);
+    await saveVideos(updated);
+    alert('Video saved successfully!');
+  };
+
+  const handleDeleteVideo = async (idx: number) => {
+    if (!confirm('Are you sure you want to delete this video?')) return;
+    const updated = videos.filter((_, i) => i !== idx);
+    setVideos(updated);
+    await saveVideos(updated);
+    alert('Video deleted successfully!');
+  };
+
   const featuredProducts = allProducts.filter(p => p.is_featured);
 
   if (loading) {
@@ -283,6 +435,7 @@ export default function ContentManagerPage() {
           { key: 'hero', label: 'HERO BANNER', icon: ImageIcon },
           { key: 'testimonials', label: 'TESTIMONIALS', icon: Save },
           { key: 'size_guide', label: 'SIZE GUIDE', icon: ImageIcon },
+          { key: 'video_feed', label: 'STYLE INSPIRATION', icon: Video },
         ] as { key: Tab; label: string; icon: any }[]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -605,6 +758,221 @@ export default function ContentManagerPage() {
             <Save size={16} /> SAVE SIZE GUIDES
           </button>
         </form>
+      )}
+
+      {/* ── Tab: Video Feed ── */}
+      {activeTab === 'video_feed' && (
+        <div className="space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-brand-primary/5 border border-brand-primary/15 rounded p-4">
+            <div>
+              <h4 className="font-serif text-lg font-bold">Homepage Style Inspiration Feed</h4>
+              <p className="text-xs text-brand-secondary/60 font-semibold mt-1">
+                Upload vertical short videos (portrait/Reels aspect ratio) to show in the "Style Inspiration" swipeable feed near the bottom of the home page.
+              </p>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={handleOpenAddVideo}
+                className="flex items-center gap-1.5 bg-brand-primary hover:bg-brand-secondary text-white font-bold text-xs tracking-wider px-4 py-2.5 rounded transition shadow-sm cursor-pointer"
+              >
+                <Plus size={14} /> ADD NEW VIDEO
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {videos.length > 0 ? (
+              videos.map((v, idx) => (
+                <div key={v.id || idx} className={`bg-white border rounded shadow-sm overflow-hidden flex flex-col group relative ${!v.is_enabled ? 'opacity-65' : ''}`}>
+                  {/* Video Thumbnail / Preview */}
+                  <div className="aspect-[9/16] bg-zinc-950 relative overflow-hidden flex items-center justify-center">
+                    {v.video_url ? (
+                      <video
+                        src={v.video_url}
+                        poster={v.thumbnail_url}
+                        className="w-full h-full object-cover"
+                        controls
+                        muted
+                        preload="metadata"
+                      />
+                    ) : (
+                      <span className="text-xs text-zinc-500">No Video Url</span>
+                    )}
+
+                    {/* Quick Badge */}
+                    <div className="absolute top-3 left-3 z-10 flex gap-2">
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded shadow ${v.is_enabled ? 'bg-green-100 text-green-800' : 'bg-zinc-100 text-zinc-600'}`}>
+                        {v.is_enabled ? 'ENABLED' : 'DISABLED'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div>
+                      <h5 className="font-bold text-sm tracking-wide line-clamp-1">{v.title}</h5>
+                      <p className="text-[10px] text-brand-secondary/45 font-semibold uppercase mt-1 truncate">
+                        URL: {v.video_url}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
+                      <button
+                        type="button"
+                        onClick={() => toggleVideoEnabled(idx)}
+                        className={`flex items-center gap-1 text-xs font-bold transition cursor-pointer ${v.is_enabled ? 'text-zinc-500 hover:text-brand-primary' : 'text-brand-primary hover:text-brand-secondary'}`}
+                        title={v.is_enabled ? 'Disable video' : 'Enable video'}
+                      >
+                        {v.is_enabled ? (
+                          <><EyeOff size={14} /> Disable</>
+                        ) : (
+                          <><Eye size={14} /> Enable</>
+                        )}
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditVideo(idx)}
+                          className="p-1.5 text-zinc-500 hover:text-brand-primary transition cursor-pointer"
+                          title="Edit Details"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteVideo(idx)}
+                          className="p-1.5 text-red-500 hover:text-red-700 transition cursor-pointer"
+                          title="Delete Video"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full bg-white border rounded py-16 text-center text-zinc-400 font-serif text-lg italic">
+                No videos configured. Click "ADD NEW VIDEO" above to build your lookbook feed!
+              </div>
+            )}
+          </div>
+
+          {/* Save/Submit Button for order/enable bulk states */}
+          {videos.length > 0 && (
+            <div className="flex justify-end pt-4">
+              <button
+                type="button"
+                onClick={() => saveVideos(videos)}
+                disabled={saving}
+                className="flex items-center gap-2 bg-brand-secondary hover:bg-brand-primary text-white font-bold text-xs tracking-widest px-8 py-3.5 rounded transition cursor-pointer"
+              >
+                {saving && <Loader2 className="animate-spin" size={14} />}
+                <Save size={16} /> SAVE VIDEO FEED CONFIG
+              </button>
+            </div>
+          )}
+
+          {/* Edit/Add Video Overlay Modal */}
+          {isEditingVideo && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-secondary/40 backdrop-blur-sm p-4 overflow-y-auto">
+              <div className="bg-white border w-full max-w-xl rounded shadow-2xl p-6 sm:p-8 space-y-6 my-8 animate-fade-in text-xs font-bold">
+                <div className="flex items-center justify-between border-b pb-4">
+                  <h4 className="font-serif text-lg font-bold">
+                    {editingVideoIndex !== null ? 'Edit Video Details' : 'Add New Lookbook Video'}
+                  </h4>
+                  <button type="button" onClick={() => setIsEditingVideo(false)} className="text-zinc-400 hover:text-zinc-600 font-bold text-sm cursor-pointer">✕</button>
+                </div>
+
+                <form onSubmit={handleSaveVideoItem} className="space-y-5">
+                  <div className="space-y-1">
+                    <label className="text-brand-secondary/65 uppercase">Video Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={videoTitle}
+                      onChange={(e) => setVideoTitle(e.target.value)}
+                      placeholder="e.g. Sage Green Autumn Maxi Dress"
+                      className="w-full border rounded p-3 bg-white outline-none focus:border-brand-primary text-sm font-semibold"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-brand-secondary/65 uppercase block">Video Source (MP4) *</label>
+                    <p className="text-[10px] text-brand-secondary/50 font-semibold normal-case">Upload video in vertical aspect ratio (9:16).</p>
+                    <div className="flex items-center gap-4">
+                      {videoUrl && (
+                        <div className="h-32 w-20 border rounded overflow-hidden bg-black flex-shrink-0 flex items-center justify-center">
+                          <video src={videoUrl} className="h-full w-full object-cover" muted playsInline autoPlay loop />
+                        </div>
+                      )}
+                      <div className="relative border-2 border-dashed border-brand-primary-light/45 rounded p-6 flex-1 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 cursor-pointer">
+                        <input type="file" accept="video/*" onChange={handleVideoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                        <Video size={18} className="text-brand-primary mb-1" />
+                        <span className="font-bold">{uploadingVideo ? 'Uploading video...' : 'Upload Video File (.mp4)'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-brand-secondary/65 uppercase block">Cover Thumbnail Image (Optional)</label>
+                    <p className="text-[10px] text-brand-secondary/50 font-semibold normal-case">
+                      Shown before the video plays. If omitted, Cloudinary generates a fallback frame from the video.
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <div className="h-32 w-24 border rounded overflow-hidden bg-gray-50 flex-shrink-0 flex items-center justify-center">
+                        {videoThumbnailUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={videoThumbnailUrl} alt="Thumbnail preview" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-[10px] text-zinc-300">No Image</span>
+                        )}
+                      </div>
+                      <div className="relative border-2 border-dashed border-brand-primary-light/45 rounded p-6 flex-1 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 cursor-pointer">
+                        <input type="file" accept="image/*" onChange={handleVideoThumbUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                        <Upload size={18} className="text-brand-primary mb-1" />
+                        <span className="font-bold">{uploadingVideoThumb ? 'Uploading thumbnail...' : 'Upload Custom Thumbnail'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 py-2 border-y border-zinc-100">
+                    <input
+                      type="checkbox"
+                      id="videoEnabled"
+                      checked={videoIsEnabled}
+                      onChange={(e) => setVideoIsEnabled(e.target.checked)}
+                      className="h-4.5 w-4.5 rounded border-zinc-300 text-brand-primary focus:ring-brand-primary cursor-pointer"
+                    />
+                    <label htmlFor="videoEnabled" className="text-xs text-brand-secondary font-bold select-none cursor-pointer">
+                      Enable Video (visible in lookbook feed)
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-3 justify-end pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingVideo(false)}
+                      className="px-6 h-11 border border-zinc-300 rounded font-bold hover:bg-zinc-50 transition cursor-pointer"
+                    >
+                      CANCEL
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving || uploadingVideo || uploadingVideoThumb}
+                      className="px-8 h-11 bg-brand-secondary hover:bg-brand-primary text-white rounded font-bold transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {saving && <Loader2 className="animate-spin" size={12} />}
+                      CONFIRM LOOK
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

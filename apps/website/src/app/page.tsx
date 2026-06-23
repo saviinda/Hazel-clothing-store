@@ -2,15 +2,18 @@ import React from 'react';
 import Link from 'next/link';
 import ProductCard from '../components/ProductCard';
 import HeroBanner from '../components/HeroBanner';
+import VideoFeed from '../components/VideoFeed';
 import { supabase } from '@hazel/database';
+
 import { Product } from '@hazel/shared';
 
-export const revalidate = 30; // ISR: re-fetch from DB every 30 seconds
+export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   let products: Product[] = [];
   let heroBanner = null;
   let testimonials = null;
+  let videos = [];
 
   try {
     // 1. Fetch featured products
@@ -35,6 +38,7 @@ export default async function Home() {
     if (contentData) {
       heroBanner = contentData.find(c => c.section_key === 'hero_banner')?.data;
       testimonials = contentData.find(c => c.section_key === 'testimonials')?.data?.reviews;
+      videos = contentData.find(c => c.section_key === 'video_feed')?.data?.videos || [];
     }
   } catch (err) {
     console.error('Homepage data fetch error:', err);
@@ -64,17 +68,17 @@ export default async function Home() {
       {/* 2. Trust Bar */}
       <section className="bg-white border-b border-brand-primary-light/10 py-8 sm:py-10">
         <div className="mx-auto max-w-7xl px-6 md:px-12 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-10 text-center">
-          <div className="flex flex-col items-center space-y-2">
+          <div className="flex flex-col items-center space-y-2 reveal">
             <span className="text-[10px] tracking-[0.25em] font-semibold text-brand-primary/80 uppercase">01 / LOGISTICS</span>
             <h4 className="font-serif text-lg font-light text-brand-secondary tracking-wider">Island-Wide Delivery</h4>
             <p className="text-xs text-brand-secondary-light/70 max-w-xs leading-relaxed">Delivered straight to your doorstep across Sri Lanka.</p>
           </div>
-          <div className="flex flex-col items-center space-y-2 border-y border-brand-primary-light/15 py-6 sm:border-y-0 sm:border-x sm:py-0">
+          <div className="flex flex-col items-center space-y-2 border-y border-brand-primary-light/15 py-6 sm:border-y-0 sm:border-x sm:py-0 reveal delay-100">
             <span className="text-[10px] tracking-[0.25em] font-semibold text-brand-primary/80 uppercase">02 / PAYMENT</span>
             <h4 className="font-serif text-lg font-light text-brand-secondary tracking-wider">Easy Bank Transfers</h4>
             <p className="text-xs text-brand-secondary-light/70 max-w-xs leading-relaxed">Upload receipt screenshots at checkout for instant verification.</p>
           </div>
-          <div className="flex flex-col items-center space-y-2">
+          <div className="flex flex-col items-center space-y-2 reveal delay-200">
             <span className="text-[10px] tracking-[0.25em] font-semibold text-brand-primary/80 uppercase">03 / COUTURE</span>
             <h4 className="font-serif text-lg font-light text-brand-secondary tracking-wider">Feminine Silhouettes</h4>
             <p className="text-xs text-brand-secondary-light/70 max-w-xs leading-relaxed">Sizes S to XL tailored to flatter young women aged 15-40.</p>
@@ -83,7 +87,7 @@ export default async function Home() {
       </section>
 
       {/* 3. Dynamic Categories — pulled live from DB */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24 md:px-12 w-full">
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24 md:px-12 w-full reveal">
         <div className="text-center mb-10 sm:mb-16 space-y-2">
           <span className="text-brand-primary text-xs uppercase tracking-[0.3em] font-semibold block mb-2">Curated Collections</span>
           <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-brand-secondary tracking-wide">
@@ -95,7 +99,7 @@ export default async function Home() {
       </section>
 
       {/* 4. Featured Products — pulled live from DB */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16 md:px-12 w-full">
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16 md:px-12 w-full reveal">
         <div className="text-center mb-10 sm:mb-16 space-y-2">
           <span className="text-brand-primary text-xs uppercase tracking-[0.3em] font-semibold block mb-2">Our Favorites</span>
           <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-brand-secondary tracking-wide">
@@ -138,8 +142,11 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 5. Testimonials */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24 md:px-12 w-full">
+      {/* 5. Style Inspiration Video Feed */}
+      <VideoFeed videos={videos} />
+
+      {/* 6. Testimonials */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24 md:px-12 w-full reveal">
         <div className="text-center mb-10 sm:mb-16 space-y-2">
           <span className="text-brand-primary text-xs uppercase tracking-[0.3em] font-semibold block mb-2">Testimonials</span>
           <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-brand-secondary tracking-wide">
@@ -152,19 +159,22 @@ export default async function Home() {
             { comment: 'Absolutely love the Blush Linen Midi Dress! The fabric is perfect for Colombo weather and the fit is spot on.', name: 'Shenali D.', rating: 5 },
             { comment: 'Bought the Mom Jeans and White Crop Top. Both look exactly like the photos on their Instagram. Shipping was super fast!', name: 'Ishini W.', rating: 5 },
             { comment: 'Order procedure was very easy. Just uploaded my bank receipt and order status updated on the tracking link in 1 hour.', name: 'Sanduni P.', rating: 5 },
-          ]).map((t: any, idx: number) => (
-            <div key={idx} className="bg-white border border-brand-primary-light/15 p-8 rounded-sm shadow-[0_4px_20px_rgba(181,131,141,0.05)] hover:shadow-[0_10px_30px_rgba(181,131,141,0.1)] transition duration-500 space-y-6 relative">
-              <div className="absolute top-6 right-8 text-brand-primary-light/20 text-6xl font-serif select-none pointer-events-none">"</div>
-              <div className="flex text-brand-accent-gold text-sm tracking-wider">
-                {Array.from({ length: t.rating || 5 }).map((_, i) => '★').join('')}
+          ]).map((t: any, idx: number) => {
+            const delayClass = idx === 0 ? 'delay-75' : idx === 1 ? 'delay-150' : 'delay-300';
+            return (
+              <div key={idx} className={`bg-white border border-brand-primary-light/15 p-8 rounded-sm shadow-[0_4px_20px_rgba(181,131,141,0.05)] hover:shadow-[0_10px_30px_rgba(181,131,141,0.1)] transition duration-500 space-y-6 relative reveal ${delayClass}`}>
+                <div className="absolute top-6 right-8 text-brand-primary-light/20 text-6xl font-serif select-none pointer-events-none">"</div>
+                <div className="flex text-brand-accent-gold text-sm tracking-wider">
+                  {Array.from({ length: t.rating || 5 }).map((_, i) => '★').join('')}
+                </div>
+                <p className="text-sm italic text-brand-secondary-light/95 leading-relaxed font-serif">"{t.comment || t.quote}"</p>
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="h-[1px] w-6 bg-brand-primary/40"></div>
+                  <h5 className="font-sans text-[10px] font-semibold tracking-[0.2em] text-brand-secondary uppercase">— {t.name}</h5>
+                </div>
               </div>
-              <p className="text-sm italic text-brand-secondary-light/95 leading-relaxed font-serif">"{t.comment || t.quote}"</p>
-              <div className="flex items-center gap-3 pt-2">
-                <div className="h-[1px] w-6 bg-brand-primary/40"></div>
-                <h5 className="font-sans text-[10px] font-semibold tracking-[0.2em] text-brand-secondary uppercase">— {t.name}</h5>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     </div>

@@ -1,21 +1,11 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Outfit } from "next/font/google";
 import "./globals.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import BottomNav from "../components/BottomNav";
+import ScrollObserver from "../components/ScrollObserver";
 
-const cormorant = Cormorant_Garamond({
-  variable: "--font-cormorant",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
-});
 
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
 
 export const metadata: Metadata = {
   title: "Hazel Clothing Boutique | Women's Fashion Sri Lanka",
@@ -38,11 +28,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${cormorant.variable} ${outfit.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col bg-brand-primary-cream text-brand-secondary font-sans">
         <Header />
+        <ScrollObserver />
         <main className="flex-1 flex flex-col">{children}</main>
+        <BottomNav />
         <Footer />
       </body>
     </html>
