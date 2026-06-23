@@ -4,15 +4,14 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCart } from '../store/useCart';
-import { Menu, X, ShoppingBag } from 'lucide-react';
+import { Menu, X, ShoppingBag, UserCircle } from 'lucide-react';
 import Logo from './Logo';
+import { supabase } from '../lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 const NAV_LINKS = [
   { label: 'HOME', href: '/' },
   { label: 'SHOP', href: '/shop' },
-  { label: 'ORDER TRACKING', href: '/track' },
-  { label: 'ABOUT US', href: '/about' },
-  { label: 'CONTACT US', href: '/contact' },
 ];
 
 function NavLink({
@@ -42,13 +41,28 @@ function NavLink({
   );
 }
 
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export default function Header() {
   const items = useCart((state) => state.items);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     setMounted(true);
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => { listener.subscription.unsubscribe(); };
   }, []);
 
   useEffect(() => {
@@ -57,6 +71,8 @@ export default function Header() {
   }, [isMenuOpen]);
 
   const totalItemsCount = mounted ? items.reduce((total, item) => total + item.qty, 0) : 0;
+  const displayName = user?.user_metadata?.name || user?.email?.split('@')[0];
+  const initials = displayName ? getInitials(displayName) : null;
 
   return (
     <>
@@ -70,13 +86,16 @@ export default function Header() {
             </div>
           </div>
 
+          {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center gap-5 xl:gap-8 text-[11px] font-medium tracking-[0.2em] text-brand-secondary">
             {NAV_LINKS.map((link) => (
               <NavLink key={link.href} href={link.href} label={link.label} className="py-0 whitespace-nowrap" />
             ))}
           </nav>
 
+          {/* Right icons */}
           <div className="flex items-center gap-1 sm:gap-2">
+            {/* Cart */}
             <Link
               href="/cart"
               className="touch-target relative inline-flex items-center justify-center text-brand-secondary hover:text-brand-primary transition"
@@ -90,6 +109,22 @@ export default function Header() {
               )}
             </Link>
 
+            {/* Profile (desktop) */}
+            <Link
+              href="/profile"
+              className="hidden lg:inline-flex touch-target items-center justify-center text-brand-secondary hover:text-brand-primary transition"
+              aria-label="Profile"
+            >
+              {mounted && initials ? (
+                <span className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-primary to-brand-accent flex items-center justify-center text-white text-[11px] font-bold shadow-sm">
+                  {initials}
+                </span>
+              ) : (
+                <UserCircle size={22} />
+              )}
+            </Link>
+
+            {/* Mobile menu toggle */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="touch-target inline-flex items-center justify-center text-brand-secondary hover:text-brand-primary lg:hidden"
@@ -102,6 +137,7 @@ export default function Header() {
         </div>
       </header>
 
+      {/* Mobile Side Drawer */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
@@ -130,6 +166,21 @@ export default function Header() {
                   onClick={() => setIsMenuOpen(false)}
                 />
               ))}
+              {/* Profile Link in drawer */}
+              <Link
+                href="/profile"
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-2 py-3 transition-colors duration-300 hover:text-brand-primary"
+              >
+                {mounted && initials ? (
+                  <span className="h-6 w-6 rounded-full bg-gradient-to-br from-brand-primary to-brand-accent flex items-center justify-center text-white text-[9px] font-bold">
+                    {initials}
+                  </span>
+                ) : (
+                  <UserCircle size={16} />
+                )}
+                {mounted && user ? 'MY PROFILE' : 'SIGN IN'}
+              </Link>
             </nav>
             <div className="border-t border-brand-primary-light/15 p-5">
               <Link

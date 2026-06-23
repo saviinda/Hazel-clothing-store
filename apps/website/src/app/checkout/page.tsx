@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../store/useCart';
-import { ShieldCheck, Upload, Loader2, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, Upload, Loader2, ArrowLeft, UserCircle } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@hazel/database';
+import { supabase as browserSupabase } from '../../lib/supabase';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -39,9 +40,23 @@ export default function CheckoutPage() {
   useEffect(() => {
     setMounted(true);
 
-    async function loadStoreSettings() {
+    async function init() {
       try {
-        // 1. Fetch delivery fee
+        // 1. Auto-fill from signed-in customer profile
+        const { data: authData } = await browserSupabase.auth.getUser();
+        if (authData?.user) {
+          const meta = authData.user.user_metadata || {};
+          if (meta.name)  setName(meta.name);
+          if (authData.user.email) setEmail(authData.user.email);
+          if (meta.phone) setPhone(meta.phone);
+          if (meta.address) {
+            if (meta.address.street)      setStreet(meta.address.street);
+            if (meta.address.city)        setCity(meta.address.city);
+            if (meta.address.postal_code) setPostalCode(meta.address.postal_code);
+          }
+        }
+
+        // 2. Fetch delivery fee
         const { data: delData } = await supabase
           .from('content')
           .select('data')
@@ -52,7 +67,7 @@ export default function CheckoutPage() {
           setDeliveryFee(delData.data.delivery_fee);
         }
 
-        // 2. Fetch bank details
+        // 3. Fetch bank details
         const { data: bankData } = await supabase
           .from('content')
           .select('data')
@@ -68,11 +83,11 @@ export default function CheckoutPage() {
           });
         }
       } catch (err) {
-        console.error('Failed to load store settings:', err);
+        console.error('Failed to initialise checkout:', err);
       }
     }
 
-    loadStoreSettings();
+    init();
   }, []);
 
   if (!mounted) {
@@ -296,7 +311,13 @@ export default function CheckoutPage() {
         {/* Checkout Form */}
         <form onSubmit={handleSubmit} className="lg:col-span-7 order-last lg:order-first space-y-6 sm:space-y-8">
           <div className="space-y-5 bg-white p-5 sm:p-8 border border-brand-primary-light/10 rounded shadow-sm">
-            <h3 className="font-serif text-xl font-bold text-brand-secondary">Shipping &amp; Contact Details</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-serif text-xl font-bold text-brand-secondary">Shipping &amp; Contact Details</h3>
+              <Link href="/profile" className="flex items-center gap-1.5 text-xs text-brand-primary hover:underline font-semibold">
+                <UserCircle size={14} />
+                My Profile
+              </Link>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
