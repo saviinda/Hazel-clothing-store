@@ -82,7 +82,6 @@ export default function BottomNav() {
               <div className={`flex items-center justify-center ${isActive ? '[&_svg]:stroke-[2.5px]' : '[&_svg]:stroke-[1.8px]'}`}>
                 {item.icon}
               </div>
-              <span className="text-[10px] mt-1 font-semibold tracking-wider">{item.label}</span>
             </Link>
           );
         })}

@@ -143,39 +143,39 @@ export default function VideoFeed({ videos = [] }: VideoFeedProps) {
         ══════════════════════════════════════════ */}
         <div className="flex-shrink-0 relative" style={{ filter: 'drop-shadow(0 30px 60px rgba(0,0,0,0.35))' }}>
 
-          {/* Outer glow ring */}
+          {/* Outer glow ring (silver/white) */}
           <div
-            className="absolute -inset-2 rounded-[28px] opacity-60"
+            className="absolute -inset-2 rounded-[28px] opacity-40"
             style={{
-              background: 'linear-gradient(135deg, #D4AF37, #FFF8DC, #B8860B, #FFD700, #B8860B, #FFF8DC, #D4AF37)',
+              background: 'linear-gradient(135deg, #C0C0C0, #FFFFFF, #E8E8E8, #A8A8A8, #E8E8E8, #FFFFFF, #C0C0C0)',
               filter: 'blur(8px)',
             }}
           />
 
-          {/* Frame outer shell — thick gold gradient */}
+          {/* Frame outer shell — thick silver/light-metallic gradient */}
           <div
             className="relative rounded-[24px]"
             style={{
               padding: '18px',
               background: `
                 linear-gradient(135deg,
-                  #8B6914 0%,
-                  #D4AF37 12%,
-                  #F5E08A 22%,
-                  #D4AF37 32%,
-                  #A07830 42%,
-                  #D4AF37 52%,
-                  #F5E08A 62%,
-                  #D4AF37 72%,
-                  #8B6914 100%
+                  #a8a8a8 0%,
+                  #e8e8e8 12%,
+                  #ffffff 22%,
+                  #d8d8d8 32%,
+                  #bebebe 42%,
+                  #d8d8d8 52%,
+                  #ffffff 62%,
+                  #e8e8e8 72%,
+                  #a8a8a8 100%
                 )
               `,
               boxShadow: `
-                0 0 0 1px #7a5c0c,
-                inset 0 1px 0 rgba(255,248,220,0.6),
-                inset 0 -1px 0 rgba(0,0,0,0.3),
-                inset 2px 0 0 rgba(255,248,220,0.4),
-                inset -2px 0 0 rgba(0,0,0,0.2)
+                0 0 0 1px #bebebe,
+                inset 0 1px 0 rgba(255,255,255,0.8),
+                inset 0 -1px 0 rgba(0,0,0,0.15),
+                inset 2px 0 0 rgba(255,255,255,0.6),
+                inset -2px 0 0 rgba(0,0,0,0.1)
               `,
             }}
           >
@@ -188,8 +188,8 @@ export default function VideoFeed({ videos = [] }: VideoFeedProps) {
             ].map((pos, i) => (
               <span
                 key={i}
-                className={`absolute ${pos} text-yellow-200/80 text-xl leading-none select-none z-10`}
-                style={{ textShadow: '0 0 6px rgba(212,175,55,0.9), 0 1px 2px rgba(0,0,0,0.4)' }}
+                className={`absolute ${pos} text-slate-100/90 text-xl leading-none select-none z-10`}
+                style={{ textShadow: '0 0 6px rgba(255,255,255,0.9), 0 1px 2px rgba(0,0,0,0.3)' }}
               >
                 ✦
               </span>
@@ -200,15 +200,15 @@ export default function VideoFeed({ videos = [] }: VideoFeedProps) {
               <div
                 className="px-5 py-1 rounded-b-xl flex items-center gap-2"
                 style={{
-                  background: 'linear-gradient(180deg, #c9a94c 0%, #8B6914 100%)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                  border: '1px solid #7a5c0c',
+                  background: 'linear-gradient(180deg, #d8d8d8 0%, #a8a8a8 100%)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  border: '1px solid #bebebe',
                   borderTop: 'none',
                 }}
               >
                 <span
                   className="text-[9px] tracking-[0.35em] font-bold uppercase"
-                  style={{ color: '#FFF8DC', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                  style={{ color: '#2b221f', textShadow: '0 1px 1px rgba(255,255,255,0.5)' }}
                 >
                   ✦ HAZEL ✦
                 </span>
@@ -220,36 +220,36 @@ export default function VideoFeed({ videos = [] }: VideoFeedProps) {
               <div
                 className="px-5 py-1 rounded-t-xl flex items-center gap-2"
                 style={{
-                  background: 'linear-gradient(0deg, #c9a94c 0%, #8B6914 100%)',
-                  boxShadow: '0 -2px 8px rgba(0,0,0,0.3)',
-                  border: '1px solid #7a5c0c',
+                  background: 'linear-gradient(0deg, #d8d8d8 0%, #a8a8a8 100%)',
+                  boxShadow: '0 -2px 8px rgba(0,0,0,0.15)',
+                  border: '1px solid #bebebe',
                   borderBottom: 'none',
                 }}
               >
                 <span
                   className="text-[8px] tracking-[0.3em] font-bold uppercase"
-                  style={{ color: 'rgba(255,248,220,0.7)', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                  style={{ color: 'rgba(43,34,31,0.8)', textShadow: '0 1px 1px rgba(255,255,255,0.5)' }}
                 >
                   Style Boutique
                 </span>
               </div>
             </div>
 
-            {/* Inner bevel ring — dark for depth */}
+            {/* Inner bevel ring — dark charcoal/silver for depth */}
             <div
               className="rounded-[10px] overflow-hidden"
               style={{
                 padding: '3px',
-                background: 'linear-gradient(135deg, #2C1A08 0%, #4a3010 50%, #2C1A08 100%)',
-                boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6), 0 1px 0 rgba(212,175,55,0.3)',
+                background: 'linear-gradient(135deg, #1e1e1e 0%, #3a3a3a 50%, #1e1e1e 100%)',
+                boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.2)',
               }}
             >
-              {/* Innermost thin gold accent ring */}
+              {/* Innermost thin silver accent ring */}
               <div
                 className="rounded-[8px] overflow-hidden"
                 style={{
                   padding: '1px',
-                  background: 'linear-gradient(135deg, #D4AF37, #8B6914, #D4AF37)',
+                  background: 'linear-gradient(135deg, #e8e8e8, #bebebe, #e8e8e8)',
                 }}
               >
                 {/* The Video Screen */}
@@ -337,15 +337,15 @@ export default function VideoFeed({ videos = [] }: VideoFeedProps) {
           <div
             className="absolute top-8 bottom-8 -left-3 w-1.5 rounded-full"
             style={{
-              background: 'linear-gradient(180deg, #8B6914 0%, #D4AF37 30%, #F5E08A 50%, #D4AF37 70%, #8B6914 100%)',
-              boxShadow: '-2px 0 6px rgba(0,0,0,0.2)',
+              background: 'linear-gradient(180deg, #a8a8a8 0%, #e8e8e8 30%, #ffffff 50%, #e8e8e8 70%, #a8a8a8 100%)',
+              boxShadow: '-2px 0 6px rgba(0,0,0,0.15)',
             }}
           />
           <div
             className="absolute top-8 bottom-8 -right-3 w-1.5 rounded-full"
             style={{
-              background: 'linear-gradient(180deg, #8B6914 0%, #D4AF37 30%, #F5E08A 50%, #D4AF37 70%, #8B6914 100%)',
-              boxShadow: '2px 0 6px rgba(0,0,0,0.2)',
+              background: 'linear-gradient(180deg, #a8a8a8 0%, #e8e8e8 30%, #ffffff 50%, #e8e8e8 70%, #a8a8a8 100%)',
+              boxShadow: '2px 0 6px rgba(0,0,0,0.15)',
             }}
           />
         </div>

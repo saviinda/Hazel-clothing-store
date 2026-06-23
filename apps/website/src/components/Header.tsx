@@ -12,6 +12,8 @@ import type { User } from '@supabase/supabase-js';
 const NAV_LINKS = [
   { label: 'HOME', href: '/' },
   { label: 'SHOP', href: '/shop' },
+  { label: 'ABOUT US', href: '/about' },
+  { label: 'ORDER TRACKING', href: '/track' },
 ];
 
 function NavLink({
