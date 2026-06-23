@@ -142,6 +142,7 @@ export default function AdminShell({ children }: AdminShellProps) {
   const menuItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
     { label: 'Orders', path: '/orders', icon: ShoppingBag },
+    { label: 'Customers', path: '/customers', icon: UserCircle },
     { label: 'Products', path: '/products', icon: Tag },
     { label: 'Categories', path: '/categories', icon: FolderTree },
     { label: 'Inventory', path: '/inventory', icon: Boxes },

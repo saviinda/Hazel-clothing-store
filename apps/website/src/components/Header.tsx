@@ -12,8 +12,16 @@ import type { User } from '@supabase/supabase-js';
 const NAV_LINKS = [
   { label: 'HOME', href: '/' },
   { label: 'SHOP', href: '/shop' },
+  { label: 'ORDER TRACKING', href: '/track' },
+  { label: 'ABOUT US', href: '/about' },
+  { label: 'CONTACT US', href: '/contact' },
+];
+
+const MOBILE_NAV_LINKS = [
+  { label: 'HOME', href: '/' },
   { label: 'ABOUT US', href: '/about' },
   { label: 'ORDER TRACKING', href: '/track' },
+  { label: 'CONTACT US', href: '/contact' },
 ];
 
 function NavLink({
@@ -89,7 +97,7 @@ export default function Header() {
           </div>
 
           {/* Desktop Nav */}
-          <nav className="hidden lg:flex items-center gap-5 xl:gap-8 text-[11px] font-medium tracking-[0.2em] text-brand-secondary">
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-6 text-[11px] font-medium tracking-[0.12em] text-brand-secondary">
             {NAV_LINKS.map((link) => (
               <NavLink key={link.href} href={link.href} label={link.label} className="py-0 whitespace-nowrap" />
             ))}
@@ -160,7 +168,7 @@ export default function Header() {
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto px-5 py-4 text-sm font-semibold tracking-wider text-brand-secondary">
-              {NAV_LINKS.map((link) => (
+              {MOBILE_NAV_LINKS.map((link) => (
                 <NavLink
                   key={link.href}
                   href={link.href}
