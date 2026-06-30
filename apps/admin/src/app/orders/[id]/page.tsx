@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Order, OrderStatus, PaymentStatus } from '@hazel/shared';
 import { Loader2, ArrowLeft, ShieldCheck, ShieldAlert, Truck, Package, Clock, Eye } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const STATUS_STEPS: OrderStatus[] = [
   'Pending Payment',
@@ -18,6 +19,7 @@ const STATUS_STEPS: OrderStatus[] = [
 ];
 
 export default function OrderDetailPage() {
+  const { toast } = useToast();
   const router = useRouter();
   const { id } = useParams() as { id: string };
 
@@ -118,9 +120,10 @@ export default function OrderDetailPage() {
 
       setShowRejectForm(false);
       setRejectReason('');
+      toast.success(approve ? 'Payment transfer verified successfully!' : 'Payment transfer rejected successfully.');
       await loadOrder();
     } catch (err: any) {
-      alert(err.message || 'Verification update failed.');
+      toast.error(err.message || 'Verification update failed.');
     } finally {
       setUpdating(false);
     }
@@ -186,9 +189,10 @@ export default function OrderDetailPage() {
         }).catch((err) => console.error('Email trigger failed:', err));
       }
 
+      toast.success(`Order status updated to ${nextStatus}.`);
       await loadOrder();
     } catch (err: any) {
-      alert(err.message || 'Status transition failed.');
+      toast.error(err.message || 'Status transition failed.');
     } finally {
       setUpdating(false);
     }

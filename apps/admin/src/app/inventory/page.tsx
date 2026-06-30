@@ -1,14 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Product, InventoryLog } from '@hazel/shared';
-import { Loader2, AlertCircle, Plus, Minus, FileSpreadsheet, History } from 'lucide-react';
+import { Loader2, AlertCircle, Plus, Minus, FileSpreadsheet, History, Radio } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useRealtimeTable } from '@/hooks/use-realtime-table';
 
 export default function InventoryPage() {
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [revalidating, setRevalidating] = useState(false);
+  const [isLive, setIsLive] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState<'status' | 'logs'>('status');
 
@@ -18,42 +23,70 @@ export default function InventoryPage() {
   const [adjustQty, setAdjustQty] = useState(1);
   const [adjustReason, setAdjustReason] = useState('');
 
-  const loadInventoryData = async () => {
-    setLoading(true);
+  const loadInventoryData = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+    } else {
+      setRevalidating(true);
+    }
     try {
-      const { data: prodData } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_deleted', false)
-        .order('name', { ascending: true });
+      const [prodResult, logsResult] = await Promise.all([
+        supabase
+          .from('products')
+          .select('*')
+          .eq('is_deleted', false)
+          .order('name', { ascending: true }),
+        supabase
+          .from('inventory_logs')
+          .select(`
+            *,
+            product:product_id (name),
+            user:performed_by (name)
+          `)
+          .order('created_at', { ascending: false })
+          .limit(30),
+      ]);
 
-      const { data: logsData } = await supabase
-        .from('inventory_logs')
-        .select(`
-          *,
-          product:product_id (name),
-          user:performed_by (name)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(30);
-
-      if (prodData) {
-        setProducts(prodData as unknown as Product[]);
-        if (prodData.length > 0 && !selectedProductId) {
-          setSelectedProductId(prodData[0].id);
+      if (prodResult.data) {
+        setProducts(prodResult.data as unknown as Product[]);
+        if (prodResult.data.length > 0 && !selectedProductId) {
+          setSelectedProductId(prodResult.data[0].id);
         }
       }
-      if (logsData) setLogs(logsData);
+      if (logsResult.data) setLogs(logsResult.data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+      setRevalidating(false);
+      setIsLive(true);
     }
-  };
+  }, [selectedProductId]);
 
   useEffect(() => {
     loadInventoryData();
-  }, []);
+  }, [loadInventoryData]);
+
+  // ── Real-time: optimistic product stock updates ────────────────────────────
+  useRealtimeTable<Product & { id: string }>({ 
+    table: 'products',
+    channelName: 'inventory-products-rt',
+    onUpdate: (row) =>
+      setProducts(prev =>
+        prev.map(p => (p.id === row.id ? { ...p, ...row } as unknown as Product : p))
+      ),
+    onInsert: () => loadInventoryData(true),
+    onDelete: (row) =>
+      setProducts(prev => prev.filter(p => p.id !== row.id)),
+  });
+
+  // ── Real-time: prepend new inventory log entries ───────────────────────────
+  useRealtimeTable<any>({ 
+    table: 'inventory_logs',
+    channelName: 'inventory-logs-rt',
+    onInsert: () => loadInventoryData(true), // logs need joined data, re-fetch
+  });
+
 
   const handleAdjustStock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,10 +136,10 @@ export default function InventoryPage() {
 
       setAdjustQty(1);
       setAdjustReason('');
-      await loadInventoryData();
-      alert('Stock adjusted successfully!');
+      await loadInventoryData(true);
+      toast.success('Stock adjusted successfully!');
     } catch (err: any) {
-      alert(err.message || 'Stock adjustment failed.');
+      toast.error(err.message || 'Stock adjustment failed.');
     } finally {
       setUpdating(false);
     }
@@ -114,6 +147,13 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-8 text-brand-secondary">
+      {/* Live badge */}
+      {isLive && (
+        <div className="flex items-center justify-end gap-2">
+          <Radio size={12} className="text-green-500 animate-pulse" />
+          <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Live</span>
+        </div>
+      )}
       {/* Tab Selectors */}
       <div className="scroll-tabs border-b border-brand-primary-light/15">
         <button
@@ -150,7 +190,12 @@ export default function InventoryPage() {
           {/* Stock Table */}
           <div className="lg:col-span-8 bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm">
             <h4 className="font-serif text-lg font-bold mb-6">Current Stock Levels</h4>
-            <div className="overflow-x-auto -mx-6 px-6">
+            <div className={`overflow-x-auto -mx-6 px-6 transition-opacity duration-200 relative ${revalidating ? 'opacity-60 pointer-events-none' : ''}`}>
+              {revalidating && (
+                <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px] flex items-center justify-center z-10 rounded">
+                  <Loader2 className="animate-spin text-brand-primary" size={24} />
+                </div>
+              )}
               <div className="min-w-[700px]">
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>

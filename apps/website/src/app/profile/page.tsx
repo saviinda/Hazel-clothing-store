@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   User, LogOut, ShoppingBag, Edit3, Eye, EyeOff, Loader2,
@@ -9,8 +9,10 @@ import {
   Lock, Mail, Phone, MapPin, Home, Save
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useCart } from '../../store/useCart';
 import {
-  signUpCustomer, signInCustomer, signOutCustomer, updateCustomerProfile
+  signUpCustomer, signInCustomer, signOutCustomer, updateCustomerProfile,
+  verifySignUpOtp, resendSignUpOtp
 } from '../../lib/auth';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -45,6 +47,9 @@ function formatDate(iso: string) {
 
 /* ─────────────── AUTH PANEL ─────────────── */
 function AuthPanel({ onSuccess }: { onSuccess: () => void }) {
+  const searchParams = useSearchParams();
+  const message = searchParams.get('message');
+
   const [mode, setMode] = useState<AuthMode>('signin');
   const [name, setName]             = useState('');
   const [phone, setPhone]           = useState('');
@@ -55,6 +60,11 @@ function AuthPanel({ onSuccess }: { onSuccess: () => void }) {
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState('');
   const [info, setInfo]             = useState('');
+
+  // OTP Verification States
+  const [showOtp, setShowOtp] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [resending, setResending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,15 +83,59 @@ function AuthPanel({ onSuccess }: { onSuccess: () => void }) {
         const { data, error: err } = await signUpCustomer(email, password, name, phone);
         if (err) throw err;
         if (data?.user && !data.session) {
-          setInfo('Account created! Please check your email to confirm your account.');
+          setInfo('Verification code sent to your email.');
+          setShowOtp(true);
         } else {
           onSuccess();
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      console.error('Signup error:', err);
+      const errorMessage = err?.message || JSON.stringify(err) || 'Something went wrong. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(''); setInfo('');
+    if (otpCode.length !== 6) {
+      setError('Please enter a valid 6-digit verification code.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error: err } = await verifySignUpOtp(email, otpCode);
+      if (err) throw err;
+      
+      // Automatically log the user in since their email is verified now
+      const { error: logInErr } = await signInCustomer(email, password);
+      if (logInErr) throw logInErr;
+      
+      setInfo('Account verified successfully! Logging you in...');
+      setTimeout(() => {
+        onSuccess();
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Verification failed. Please check the code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError(''); setInfo('');
+    setResending(true);
+    try {
+      const { error: err } = await resendSignUpOtp(email);
+      if (err) throw err;
+      setInfo('A new verification code has been sent to your email.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend verification code.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -99,104 +153,166 @@ function AuthPanel({ onSuccess }: { onSuccess: () => void }) {
             <span className="block text-[9px] tracking-[0.3em] text-brand-secondary/40 uppercase mt-0.5">Clothing Boutique</span>
           </Link>
           <h1 className="font-serif text-2xl font-light text-brand-secondary mt-2">
-            {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
+            {showOtp ? 'Verify Your Account' : mode === 'signin' ? 'Welcome Back' : 'Create Account'}
           </h1>
           <p className="text-xs text-brand-secondary/50 mt-1 tracking-wide">
-            {mode === 'signin'
-              ? 'Sign in to view your orders and manage your profile.'
-              : 'Join Hazel to shop and track your orders with ease.'}
+            {showOtp 
+              ? `We have sent a 6-digit confirmation code to ${email}.`
+              : mode === 'signin'
+                ? 'Sign in to view your orders and manage your profile.'
+                : 'Join Hazel to shop and track your orders with ease.'}
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="flex rounded-xl overflow-hidden border border-brand-primary-light/20 mb-6 bg-white shadow-sm">
-          {(['signin', 'signup'] as AuthMode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => { setMode(m); setError(''); setInfo(''); }}
-              className={`flex-1 py-3 text-xs font-bold tracking-widest uppercase transition ${
-                mode === m
-                  ? 'bg-brand-secondary text-white'
-                  : 'text-brand-secondary/60 hover:text-brand-secondary'
-              }`}
-            >
-              {m === 'signin' ? 'Sign In' : 'Create Account'}
-            </button>
-          ))}
-        </div>
+        {!showOtp && (
+          <div className="flex rounded-xl overflow-hidden border border-brand-primary-light/20 mb-6 bg-white shadow-sm">
+            {(['signin', 'signup'] as AuthMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => { setMode(m); setError(''); setInfo(''); }}
+                className={`flex-1 py-3 text-xs font-bold tracking-widest uppercase transition ${
+                  mode === m
+                    ? 'bg-brand-secondary text-white'
+                    : 'text-brand-secondary/60 hover:text-brand-secondary'
+                }`}
+              >
+                {m === 'signin' ? 'Sign In' : 'Create Account'}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Form Card */}
         <div className="bg-white rounded-2xl border border-brand-primary-light/15 shadow-lg p-6 sm:p-8">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'signup' && (
-              <>
-                <div className="relative">
-                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30" />
-                  <input className={`${inputCls} pl-10`} type="text" placeholder="Full Name *"
-                    value={name} onChange={(e) => setName(e.target.value)} required />
-                </div>
-                <div className="relative">
-                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30" />
-                  <input className={`${inputCls} pl-10`} type="tel" placeholder="Phone Number *"
-                    value={phone} onChange={(e) => setPhone(e.target.value)} required />
-                </div>
-              </>
-            )}
-
-            <div className="relative">
-              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30" />
-              <input className={`${inputCls} pl-10`} type="email" placeholder="Email Address *"
-                value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-
-            <div className="relative">
-              <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30" />
-              <input className={`${inputCls} pl-10 pr-11`} type={showPw ? 'text' : 'password'}
-                placeholder="Password *" value={password}
-                onChange={(e) => setPassword(e.target.value)} required minLength={6} />
-              <button type="button" onClick={() => setShowPw(!showPw)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30 hover:text-brand-secondary transition">
-                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-
-            {mode === 'signup' && (
+          {showOtp ? (
+            <form onSubmit={handleOtpSubmit} className="space-y-4">
               <div className="relative">
                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30" />
-                <input className={`${inputCls} pl-10`} type={showPw ? 'text' : 'password'}
-                  placeholder="Confirm Password *" value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)} required minLength={6} />
+                <input 
+                  className={`${inputCls} pl-10`} 
+                  type="text" 
+                  maxLength={6}
+                  placeholder="6-Digit Verification Code *"
+                  value={otpCode} 
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))} 
+                  required 
+                />
               </div>
-            )}
 
-            {error && (
-              <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-700">
-                <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
-                {error}
+              {error && (
+                <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-700">
+                  <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+              {info && (
+                <div className="flex items-start gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-700">
+                  <CheckCircle size={14} className="mt-0.5 flex-shrink-0" />
+                  {info}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-secondary py-3.5 text-xs font-bold tracking-widest text-white transition hover:bg-brand-primary disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+              >
+                {loading ? <Loader2 size={16} className="animate-spin" /> : null}
+                {loading ? 'VERIFYING...' : 'VERIFY CODE'}
+              </button>
+
+              <div className="text-center text-xs text-brand-secondary/40 mt-4 space-y-2">
+                <p>Didn&apos;t receive the code?</p>
+                <button 
+                  type="button" 
+                  onClick={handleResendOtp}
+                  disabled={resending}
+                  className="text-brand-primary font-semibold hover:underline disabled:opacity-50 cursor-pointer"
+                >
+                  {resending ? 'Sending...' : 'Resend Verification Code'}
+                </button>
               </div>
-            )}
-            {info && (
-              <div className="flex items-start gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-700">
-                <CheckCircle size={14} className="mt-0.5 flex-shrink-0" />
-                {info}
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {mode === 'signup' && (
+                <>
+                  <div className="relative">
+                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30" />
+                    <input className={`${inputCls} pl-10`} type="text" placeholder="Full Name *"
+                      value={name} onChange={(e) => setName(e.target.value)} required />
+                  </div>
+                  <div className="relative">
+                    <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30" />
+                    <input className={`${inputCls} pl-10`} type="tel" placeholder="Phone Number *"
+                      value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                  </div>
+                </>
+              )}
+
+              <div className="relative">
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30" />
+                <input className={`${inputCls} pl-10`} type="email" placeholder="Email Address *"
+                  value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-secondary py-3.5 text-xs font-bold tracking-widest text-white transition hover:bg-brand-primary disabled:opacity-60 disabled:cursor-not-allowed mt-2"
-            >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : null}
-              {loading ? 'Please wait...' : mode === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT'}
-            </button>
-          </form>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30" />
+                <input className={`${inputCls} pl-10 pr-11`} type={showPw ? 'text' : 'password'}
+                  placeholder="Password *" value={password}
+                  onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+                <button type="button" onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30 hover:text-brand-secondary transition">
+                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
 
-          {mode === 'signin' && (
+              {mode === 'signup' && (
+                <div className="relative">
+                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-secondary/30" />
+                  <input className={`${inputCls} pl-10`} type={showPw ? 'text' : 'password'}
+                    placeholder="Confirm Password *" value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)} required minLength={6} />
+                </div>
+              )}
+
+              {message && !error && !info && (
+                <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-700">
+                  <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                  {message}
+                </div>
+              )}
+
+              {error && (
+                <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-700">
+                  <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+              {info && (
+                <div className="flex items-start gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-700">
+                  <CheckCircle size={14} className="mt-0.5 flex-shrink-0" />
+                  {info}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-secondary py-3.5 text-xs font-bold tracking-widest text-white transition hover:bg-brand-primary disabled:opacity-60 disabled:cursor-not-allowed mt-2 cursor-pointer"
+              >
+                {loading ? <Loader2 size={16} className="animate-spin" /> : null}
+                {loading ? 'Please wait...' : mode === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT'}
+              </button>
+            </form>
+          )}
+
+          {!showOtp && mode === 'signin' && (
             <p className="text-center text-xs text-brand-secondary/40 mt-4">
               Don&apos;t have an account?{' '}
               <button onClick={() => { setMode('signup'); setError(''); }}
-                className="text-brand-primary font-semibold hover:underline">
+                className="text-brand-primary font-semibold hover:underline cursor-pointer">
                 Sign up
               </button>
             </p>
@@ -536,8 +652,19 @@ function ProfileDashboard({ user, onSignOut }: { user: SupabaseUser; onSignOut: 
 }
 
 /* ─────────────── PAGE ─────────────── */
-export default function ProfilePage() {
+/* Inner component — uses useSearchParams, so must live inside <Suspense> */
+function ProfilePageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams.get('redirect');
+  const action = searchParams.get('action');
+  const productId = searchParams.get('productId');
+  const size = searchParams.get('size');
+  const color = searchParams.get('color');
+  const qty = searchParams.get('qty') ? Number(searchParams.get('qty')) : 1;
+
+  const addItem = useCart((state) => state.addItem);
+
   const [user, setUser]       = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -559,6 +686,38 @@ export default function ProfilePage() {
     router.push('/');
   };
 
+  const handleSuccess = async () => {
+    if (action === 'buy' && productId) {
+      try {
+        const { data: prod } = await supabase
+          .from('products')
+          .select('name, price, images')
+          .eq('id', productId)
+          .single();
+        
+        if (prod) {
+          addItem({
+            product_id: productId,
+            name: prod.name,
+            price: Number(prod.price),
+            qty: qty,
+            size: size || 'M',
+            color: color || 'Default',
+            image_url: prod.images?.[0] || '/placeholder.jpg',
+          });
+        }
+      } catch (err) {
+        console.error('Failed to add product to cart on redirect action:', err);
+      }
+    }
+
+    if (redirectPath) {
+      router.push(redirectPath);
+    } else {
+      supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-brand-primary-cream">
@@ -568,10 +727,21 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    return <AuthPanel onSuccess={() => {
-      supabase.auth.getUser().then(({ data }) => setUser(data.user));
-    }} />;
+    return <AuthPanel onSuccess={handleSuccess} />;
   }
 
   return <ProfileDashboard user={user} onSignOut={handleSignOut} />;
+}
+
+/* Required by Next.js 15 — any page using useSearchParams needs Suspense */
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-brand-primary-cream">
+        <Loader2 size={36} className="animate-spin text-brand-primary" />
+      </div>
+    }>
+      <ProfilePageInner />
+    </Suspense>
+  );
 }

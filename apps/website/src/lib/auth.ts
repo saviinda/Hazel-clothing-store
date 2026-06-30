@@ -18,14 +18,20 @@ export async function signUpCustomer(
   name: string,
   phone: string
 ) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { name, phone, role: 'customer' },
-    },
-  });
-  return { data, error };
+  try {
+    const res = await fetch('/api/v1/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name, phone }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      return { data: null, error: { message: data.error || 'Failed to sign up' } };
+    }
+    return { data: data.data, error: null };
+  } catch (err: any) {
+    return { data: null, error: { message: err.message || 'Failed to sign up' } };
+  }
 }
 
 export async function signInCustomer(email: string, password: string) {
@@ -50,4 +56,38 @@ export async function updateCustomerProfile(updates: {
 export async function resetPassword(email: string) {
   const { data, error } = await supabase.auth.resetPasswordForEmail(email);
   return { data, error };
+}
+
+export async function verifySignUpOtp(email: string, token: string) {
+  try {
+    const res = await fetch('/api/v1/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, token }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      return { data: null, error: { message: data.error || 'Verification failed' } };
+    }
+    return { data: data.data, error: null };
+  } catch (err: any) {
+    return { data: null, error: { message: err.message || 'Verification failed' } };
+  }
+}
+
+export async function resendSignUpOtp(email: string) {
+  try {
+    const res = await fetch('/api/v1/auth/resend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      return { data: null, error: { message: data.error || 'Failed to resend verification code' } };
+    }
+    return { data: data.data, error: null };
+  } catch (err: any) {
+    return { data: null, error: { message: err.message || 'Failed to resend verification code' } };
+  }
 }

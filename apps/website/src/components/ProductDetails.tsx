@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Product } from '@hazel/shared';
 import { useCart } from '../store/useCart';
 import { ShoppingBag, ChevronRight, ShieldCheck, Truck, RefreshCw, X } from 'lucide-react';
@@ -11,6 +12,7 @@ interface ProductDetailsProps {
 }
 
 export default function ProductDetails({ product }: ProductDetailsProps) {
+  const router = useRouter();
   const addItem = useCart((state) => state.addItem);
   const [selectedSize, setSelectedSize] = useState(product.sizes[0] || 'M');
   const [selectedColor, setSelectedColor] = useState(product.colors[0] || 'Default');
@@ -38,7 +40,27 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
     loadSizeGuide();
   }, [product.category_id]);
 
-  const handleAddToCart = () => {
+  const handleColorChange = (color: string) => {
+    setSelectedColor(color);
+    
+    // Attempt to match the selected color to one of the product images
+    const normalizedColor = color.toLowerCase().replace(/\s+/g, '');
+    const matchedImg = product.images.find(img => 
+      img.toLowerCase().includes(normalizedColor) || 
+      img.toLowerCase().includes(color.toLowerCase())
+    );
+    if (matchedImg) {
+      setActiveImage(matchedImg);
+    }
+  };
+
+  const handleAddToCart = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.push(`/profile?redirect=/product/${product.id}&message=Please sign in to purchase items.`);
+      return;
+    }
+
     addItem({
       product_id: product.id,
       name: product.name,
@@ -53,6 +75,26 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
     setTimeout(() => {
       setAddedMessage(false);
     }, 3000);
+  };
+
+  const handleBuyNow = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.push(`/profile?redirect=/checkout&action=buy&productId=${product.id}&size=${selectedSize}&color=${selectedColor}&qty=${quantity}&message=Please sign in to purchase items.`);
+      return;
+    }
+
+    addItem({
+      product_id: product.id,
+      name: product.name,
+      price: product.price,
+      qty: quantity,
+      size: selectedSize,
+      color: selectedColor,
+      image_url: product.images[0] || '/placeholder.jpg',
+    });
+
+    router.push('/checkout');
   };
 
   const isLowStock = product.stock_qty > 0 && product.stock_qty <= 5;
@@ -133,7 +175,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
           </div>
         </div>
 
-        {/* Color Swatch */}
+        {/* Color Selector */}
         <div className="space-y-3">
           <span className="text-sm font-bold text-brand-secondary block">Select Color</span>
           <div className="flex flex-wrap gap-3">
@@ -142,14 +184,13 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
               return (
                 <button
                   key={color}
-                  onClick={() => setSelectedColor(color)}
-                  className={`flex items-center gap-2 rounded-full border p-1 px-4 text-xs font-bold transition ${
+                  onClick={() => handleColorChange(color)}
+                  className={`rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
                     active
                       ? 'border-brand-primary bg-brand-primary/10 text-brand-primary'
                       : 'border-brand-primary-light/30 bg-white text-brand-secondary hover:border-brand-primary'
                   }`}
                 >
-                  <span className="h-3.5 w-3.5 rounded-full border border-brand-primary-light/35" style={{ backgroundColor: color.toLowerCase().includes('wash') || color.toLowerCase().includes('denim') ? '#8da9c4' : color.replace(/\s+/g, '').toLowerCase() }} />
                   {color}
                 </button>
               );
@@ -193,19 +234,30 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
               </div>
             )}
 
-            {/* Submit Button */}
-            <button
-              onClick={handleAddToCart}
-              disabled={isOutOfStock}
-              className={`flex-1 flex items-center justify-center gap-3 rounded h-14 text-sm font-bold tracking-widest text-white transition ${
-                isOutOfStock 
-                  ? 'bg-brand-secondary/35 cursor-not-allowed' 
-                  : 'bg-brand-secondary hover:bg-brand-primary'
-              }`}
-            >
-              <ShoppingBag size={18} />
-              {isOutOfStock ? 'OUT OF STOCK' : 'ADD TO BAG'}
-            </button>
+            {/* Submit Buttons */}
+            <div className="flex-1 flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={handleAddToCart}
+                disabled={isOutOfStock}
+                className={`flex-1 flex items-center justify-center gap-3 rounded h-14 text-sm font-bold tracking-widest transition border ${
+                  isOutOfStock 
+                    ? 'bg-brand-secondary/35 border-transparent text-white cursor-not-allowed' 
+                    : 'border-brand-secondary text-brand-secondary bg-white hover:bg-brand-secondary hover:text-white'
+                }`}
+              >
+                <ShoppingBag size={18} />
+                {isOutOfStock ? 'OUT OF STOCK' : 'ADD TO BAG'}
+              </button>
+
+              {!isOutOfStock && (
+                <button
+                  onClick={handleBuyNow}
+                  className="flex-1 flex items-center justify-center gap-3 rounded h-14 text-sm font-bold tracking-widest text-white bg-brand-primary hover:bg-brand-secondary transition"
+                >
+                  BUY NOW
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Success Toast */}

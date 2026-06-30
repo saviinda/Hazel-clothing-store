@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRoleById, updateRole, deleteRole } from '@hazel/database';
 import { createAuditLog } from '@hazel/database';
+import { getCallerRole } from '@/lib/auth';
+
+const SUPER_ADMIN_ROLE_NAME = 'Super Admin';
 
 export async function GET(
   request: NextRequest,
@@ -33,12 +36,24 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+
+    // Guard: only Super Admin can update the Super Admin role definition
+    const targetRole = await getRoleById(id);
+    if (targetRole?.name === SUPER_ADMIN_ROLE_NAME) {
+      const callerRole = await getCallerRole();
+      if (callerRole !== SUPER_ADMIN_ROLE_NAME) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden: Only Super Admins can modify the Super Admin role.' },
+          { status: 403 }
+        );
+      }
+    }
+
     const body = await request.json();
     const { updated_by, ...roleData } = body;
 
     const role = await updateRole(id, roleData);
     
-    // Log the action
     if (updated_by) {
       await createAuditLog({
         admin_id: updated_by,
@@ -64,13 +79,38 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    // Guard: the Super Admin role can NEVER be deleted, by anyone
+    const targetRole = await getRoleById(id);
+    if (targetRole?.name === SUPER_ADMIN_ROLE_NAME) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: The Super Admin role cannot be deleted.' },
+        { status: 403 }
+      );
+    }
+
+    // Guard: only Super Admins can delete any other system role
+    if (targetRole?.is_system) {
+      const callerRole = await getCallerRole();
+      if (callerRole !== SUPER_ADMIN_ROLE_NAME) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden: Only Super Admins can delete system roles.' },
+          { status: 403 }
+        );
+      }
+    }
+
     await deleteRole(id);
     
-    // Log the action
-    const body = await request.json();
-    if (body.deleted_by) {
+    let deletedBy: string | undefined;
+    try {
+      const body = await request.json();
+      deletedBy = body.deleted_by;
+    } catch {}
+
+    if (deletedBy) {
       await createAuditLog({
-        admin_id: body.deleted_by,
+        admin_id: deletedBy,
         action: 'delete',
         module: 'roles',
         detail: { role_id: id },

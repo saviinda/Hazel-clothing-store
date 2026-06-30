@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Product, Category } from '@hazel/shared';
-import { Loader2, Plus, Trash2, Eye, EyeOff, Star, Search, Upload, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, Eye, EyeOff, Star, Search, Upload, X, Radio } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import ConfirmModal from '@/components/ConfirmModal';
+import { useRealtimeTable } from '@/hooks/use-realtime-table';
 
 // ── Tag-input component for custom sizes / colors ──────────────────────────
 function TagInput({
@@ -144,17 +147,20 @@ function VariantStockGrid({
   );
 }
 
-// ── Main Products Page ─────────────────────────────────────────────────────
 export default function ProductsPage() {
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [revalidating, setRevalidating] = useState(false);
+  const [isLive, setIsLive] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteProdId, setConfirmDeleteProdId] = useState<string | null>(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -170,32 +176,62 @@ export default function ProductsPage() {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+    } else {
+      setRevalidating(true);
+    }
     try {
-      const { data: prodData } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
+      const [prodResult, catResult] = await Promise.all([
+        supabase
+          .from('products')
+          .select('*')
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('categories')
+          .select('*')
+          .eq('is_active', true),
+      ]);
 
-      const { data: catData } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('is_active', true);
-
-      if (prodData) setProducts(prodData as unknown as Product[]);
-      if (catData) setCategories(catData as Category[]);
+      if (prodResult.data) setProducts(prodResult.data as unknown as Product[]);
+      if (catResult.data) setCategories(catResult.data as Category[]);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+      setRevalidating(false);
+      setIsLive(true);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
+
+  // ── Real-time: optimistic product updates ──────────────────────────────
+  useRealtimeTable<Product & { id: string }>({ 
+    table: 'products',
+    channelName: 'products-page-rt',
+    onInsert: (row) =>
+      setProducts(prev => [row as unknown as Product, ...prev]),
+    onUpdate: (row) =>
+      setProducts(prev =>
+        prev.map(p => (p.id === row.id ? { ...p, ...row } as unknown as Product : p))
+      ),
+    onDelete: (row) =>
+      setProducts(prev => prev.filter(p => p.id !== row.id)),
+  });
+
+  // ── Real-time: reload categories on change (infrequent) ─────────────────
+  useRealtimeTable<Category & { id: string }>({ 
+    table: 'categories',
+    channelName: 'categories-page-rt',
+    onChange: () => loadData(true),
+  });
+
+
 
   // Recalculate stock_qty whenever variantStock changes
   const calcTotalStock = (vs: Record<string, Record<string, number>>) =>
@@ -268,7 +304,7 @@ export default function ProductsPage() {
       setImageUrls([...imageUrls, uploadData.secure_url]);
     } catch (err) {
       console.error(err);
-      alert('Error uploading image to Cloudinary.');
+      toast.error('Error uploading image to Cloudinary.');
     } finally {
       setUploadingImage(false);
     }
@@ -279,13 +315,13 @@ export default function ProductsPage() {
     setSaving(true);
 
     if (imageUrls.length === 0) {
-      alert('Please upload at least one product image.');
+      toast.warning('Please upload at least one product image.');
       setSaving(false);
       return;
     }
 
     if (sizes.length === 0 || colors.length === 0) {
-      alert('Please add at least one size and one color.');
+      toast.warning('Please add at least one size and one color.');
       setSaving(false);
       return;
     }
@@ -344,26 +380,17 @@ export default function ProductsPage() {
       }
 
       setIsModalOpen(false);
-      await loadData();
+      toast.success(currentProduct ? 'Product updated successfully!' : 'Product created successfully!');
+      await loadData(true);
     } catch (err: any) {
-      alert(err.message || 'Error occurred while saving product.');
+      toast.error(err.message || 'Error occurred while saving product.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (prodId: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
-    try {
-      const { error } = await supabase
-        .from('products')
-        .update({ is_deleted: true, is_active: false })
-        .eq('id', prodId);
-      if (error) throw new Error(error.message);
-      await loadData();
-    } catch (err: any) {
-      alert(err.message || 'Delete failed.');
-    }
+    setConfirmDeleteProdId(prodId);
   };
 
   const filteredProducts = products.filter((p) =>
@@ -399,7 +426,12 @@ export default function ProductsPage() {
           <Loader2 className="animate-spin text-brand-primary" size={32} />
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className={`overflow-x-auto -mx-6 px-6 transition-opacity duration-200 relative ${revalidating ? 'opacity-60 pointer-events-none' : ''}`}>
+          {revalidating && (
+            <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px] flex items-center justify-center z-10 rounded">
+              <Loader2 className="animate-spin text-brand-primary" size={24} />
+            </div>
+          )}
           <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="border-b border-brand-primary-light/10 text-xs font-bold text-brand-secondary/45 uppercase">
@@ -672,6 +704,33 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmDeleteProdId !== null}
+        title="Delete Product"
+        message="Are you sure you want to delete this product?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={async () => {
+          if (!confirmDeleteProdId) return;
+          const prodId = confirmDeleteProdId;
+          setConfirmDeleteProdId(null);
+          try {
+            const { error } = await supabase
+              .from('products')
+              .update({ is_deleted: true, is_active: false })
+              .eq('id', prodId);
+            if (error) throw new Error(error.message);
+            toast.success('Product deleted successfully!');
+            await loadData(true);
+          } catch (err: any) {
+            toast.error(err.message || 'Delete failed.');
+          }
+        }}
+        onCancel={() => setConfirmDeleteProdId(null)}
+      />
     </div>
   );
 }

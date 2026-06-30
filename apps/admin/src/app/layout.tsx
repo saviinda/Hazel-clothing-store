@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Poppins, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 import AdminShell from "../components/AdminShell";
+import { ToastProvider } from "../hooks/use-toast";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -43,7 +44,9 @@ export default function RootLayout({
       className={`${inter.variable} ${poppins.variable} ${cormorant.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-brand-primary-cream text-brand-secondary">
-        <AdminShell>{children}</AdminShell>
+        <ToastProvider>
+          <AdminShell>{children}</AdminShell>
+        </ToastProvider>
       </body>
     </html>
   );

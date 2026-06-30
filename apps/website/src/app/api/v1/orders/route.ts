@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@hazel/database';
 import { EmailService } from '@hazel/services';
+import { randomUUID } from 'crypto';
 
 export async function POST(request: Request) {
   try {
@@ -48,10 +49,11 @@ export async function POST(request: Request) {
         })
         .eq('id', customerId);
     } else {
-      // Create new customer
+      // Create new customer — provide explicit UUID since customers.id has no DB default
       const { data: newCustomer, error: customerError } = await adminClient
         .from('customers')
         .insert({
+          id: randomUUID(),
           name,
           email: email || null,
           phone,

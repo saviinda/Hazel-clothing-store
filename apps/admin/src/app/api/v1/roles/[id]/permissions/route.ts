@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRolePermissions, assignPermissionToRole, removePermissionFromRole } from '@hazel/database';
+import { getRolePermissions, assignPermissionToRole, removePermissionFromRole, getRoleById } from '@hazel/database';
 import { createAuditLog } from '@hazel/database';
+import { getCallerRole } from '@/lib/auth';
+
+const SUPER_ADMIN_ROLE_NAME = 'Super Admin';
+
 
 export async function GET(
   request: NextRequest,
@@ -25,6 +29,24 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    // Guard permissions by caller role
+    const callerRole = await getCallerRole();
+    if (callerRole === 'Admin') {
+      const targetRole = await getRoleById(id);
+      if (targetRole?.name !== 'Staff') {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden: Admins can only modify Staff role permissions.' },
+          { status: 403 }
+        );
+      }
+    } else if (callerRole !== 'Super Admin') {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: Only Super Admins and Admins can modify permissions.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { permission_id, assigned_by } = body;
 
@@ -37,7 +59,6 @@ export async function POST(
 
     await assignPermissionToRole(id, permission_id);
     
-    // Log the action
     if (assigned_by) {
       await createAuditLog({
         admin_id: assigned_by,
@@ -63,6 +84,24 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    // Guard permissions by caller role
+    const callerRole = await getCallerRole();
+    if (callerRole === 'Admin') {
+      const targetRole = await getRoleById(id);
+      if (targetRole?.name !== 'Staff') {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden: Admins can only modify Staff role permissions.' },
+          { status: 403 }
+        );
+      }
+    } else if (callerRole !== 'Super Admin') {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: Only Super Admins and Admins can modify permissions.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { permission_id, removed_by } = body;
 
@@ -75,7 +114,6 @@ export async function DELETE(
 
     await removePermissionFromRole(id, permission_id);
     
-    // Log the action
     if (removed_by) {
       await createAuditLog({
         admin_id: removed_by,
@@ -94,3 +132,4 @@ export async function DELETE(
     );
   }
 }
+

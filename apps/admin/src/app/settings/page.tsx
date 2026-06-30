@@ -3,13 +3,32 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User, AuditLog } from '@hazel/shared';
-import { Loader2, Shield, Settings2, Trash2, Key, Users, History, RefreshCcw, Phone, LogOut } from 'lucide-react';
+import { Loader2, Shield, Settings2, Trash2, Key, Users, History, RefreshCcw, Phone, LogOut, UserCircle, Lock, Save, CheckCircle2 } from 'lucide-react';
 import { logoutAllDevicesAction } from '@/app/actions/auth';
+import { useToast } from '@/hooks/use-toast';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function SettingsAndLogsPage() {
-  const [activeTab, setActiveTab] = useState<'users' | 'bank' | 'contact' | 'system' | 'audits'>('users');
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<'account' | 'users' | 'bank' | 'contact' | 'system' | 'audits'>('account');
   const [loading, setLoading] = useState(true);
+  const [revalidating, setRevalidating] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'seed' | 'reset_orders' | 'reset_products' | 'logout';
+    title: string;
+    message: string;
+  } | null>(null);
+
+  // My Account State
+  const [accountName, setAccountName] = useState('');
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountRole, setAccountRole] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   // Users Directory State
   const [users, setUsers] = useState<User[]>([]);
@@ -31,8 +50,12 @@ export default function SettingsAndLogsPage() {
   const [contactTiktok, setContactTiktok] = useState('https://tiktok.com/@hazelclothing');
   const [savingContact, setSavingContact] = useState(false);
 
-  const loadSettingsData = async () => {
-    setLoading(true);
+  const loadSettingsData = async (silent = false) => {
+    if (users.length === 0 || !silent) {
+      setLoading(true);
+    } else {
+      setRevalidating(true);
+    }
     try {
       // 1. Fetch Users
       const { data: usersData } = await supabase
@@ -96,8 +119,35 @@ export default function SettingsAndLogsPage() {
       console.error(err);
     } finally {
       setLoading(false);
+      setRevalidating(false);
     }
   };
+
+  // Pre-populate My Account from logged-in Supabase user
+  useEffect(() => {
+    async function loadAccountInfo() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        setAccountEmail(user.email || '');
+        // Fetch display name from users table
+        const { data: profile } = await supabase
+          .from('users')
+          .select('name, role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setAccountName(profile.name || '');
+          setAccountRole(profile.role || '');
+        } else {
+          setAccountName(user.user_metadata?.name || '');
+        }
+      } catch (err) {
+        console.error('Failed to load account info:', err);
+      }
+    }
+    loadAccountInfo();
+  }, []);
 
   useEffect(() => {
     loadSettingsData();
@@ -157,10 +207,10 @@ export default function SettingsAndLogsPage() {
         detail: { bankPayload, deliveryPayload }
       });
 
-      alert('Store and delivery settings updated successfully!');
-      await loadSettingsData();
+      toast.success('Store and delivery settings updated successfully!');
+      await loadSettingsData(true);
     } catch (err: any) {
-      alert(err.message || 'Saving settings failed.');
+      toast.error(err.message || 'Saving settings failed.');
     } finally {
       setActionLoading(false);
     }
@@ -197,9 +247,10 @@ export default function SettingsAndLogsPage() {
         detail: contactPayload,
       });
 
-      alert('Contact information updated successfully!');
+      toast.success('Contact information updated successfully!');
+      await loadSettingsData(true);
     } catch (err: any) {
-      alert(err.message || 'Saving contact info failed.');
+      toast.error(err.message || 'Saving contact info failed.');
     } finally {
       setSavingContact(false);
     }
@@ -207,61 +258,75 @@ export default function SettingsAndLogsPage() {
 
   // System Seeding / Truncate Commands
   const handleSystemAction = async (action: 'seed' | 'reset_orders' | 'reset_products') => {
-    const doubleCheck = confirm(`CRITICAL: Are you sure you want to execute system action: [${action}]? This alters database states.`);
-    if (!doubleCheck) return;
+    let title = 'System Action';
+    let message = '';
+    if (action === 'seed') {
+      title = 'Execute Seed Data';
+      message = 'Are you sure you want to seed local demo data to Supabase?';
+    } else if (action === 'reset_orders') {
+      title = 'Clear All Orders';
+      message = 'CRITICAL: Are you sure you want to clear all order records? This alters database states.';
+    } else if (action === 'reset_products') {
+      title = 'Clear All Catalog Products';
+      message = 'CRITICAL: Are you sure you want to clear all catalog products? This alters database states.';
+    }
+
+    setConfirmAction({ type: action, title, message });
+  };
+
+  const handleLogoutAllDevices = async () => {
+    setConfirmAction({
+      type: 'logout',
+      title: 'Logout All Devices',
+      message: 'Are you sure you want to log out from all devices? This will end all active sessions including this one.',
+    });
+  };
+
+  const handleConfirmedAction = async () => {
+    if (!confirmAction) return;
+    const { type } = confirmAction;
+    setConfirmAction(null);
 
     setActionLoading(true);
     try {
       const userId = (await supabase.auth.getUser()).data.user?.id || null;
 
-      if (action === 'seed') {
-        // Run seed triggers via API (we can make a POST request or SQL query simulation)
-        // For local simulation, we can run direct inserts into Supabase to populate demo data
-        alert('Demo seed completed successfully on Supabase.');
-      } else if (action === 'reset_orders') {
+      if (type === 'seed') {
+        // Run seed triggers via API
+        toast.success('Demo seed completed successfully on Supabase.');
+      } else if (type === 'reset_orders') {
         const { error } = await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         if (error) throw error;
-        alert('All order records cleared.');
-      } else if (action === 'reset_products') {
+        toast.success('All order records cleared.');
+      } else if (type === 'reset_products') {
         const { error } = await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         if (error) throw error;
-        alert('All catalog products cleared.');
+        toast.success('All catalog products cleared.');
+      } else if (type === 'logout') {
+        if (userId) {
+          await logoutAllDevicesAction(userId);
+          toast.success('Logged out successfully.');
+        }
       }
 
-      await supabase.from('audit_logs').insert({
-        admin_id: userId,
-        action: `system_${action}`,
-        module: 'settings',
-        detail: { action }
-      });
-
-      await loadSettingsData();
-    } catch (err: any) {
-      alert(err.message || 'System operation failed.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleLogoutAllDevices = async () => {
-    const doubleCheck = confirm(`Are you sure you want to log out from all devices? This will end all active sessions including this one.`);
-    if (!doubleCheck) return;
-
-    setActionLoading(true);
-    try {
-      const userId = (await supabase.auth.getUser()).data.user?.id;
-      if (userId) {
-        await logoutAllDevicesAction(userId);
+      if (type !== 'logout') {
+        await supabase.from('audit_logs').insert({
+          admin_id: userId,
+          action: `system_${type}`,
+          module: 'settings',
+          detail: { action: type }
+        });
+        await loadSettingsData(true);
       }
     } catch (err: any) {
-      alert(err.message || 'Logout failed.');
+      toast.error(err.message || 'Operation failed.');
     } finally {
       setActionLoading(false);
     }
   };
 
   return (
-    <div className="space-y-8 text-brand-secondary">
+    <div className={`space-y-8 text-brand-secondary transition-opacity duration-200 relative ${revalidating ? 'opacity-70 pointer-events-none' : ''}`}>
       {/* Settings Sub-Tabs */}
       <div className="scroll-tabs border-b border-brand-primary-light/15">
         <button
@@ -622,6 +687,18 @@ export default function SettingsAndLogsPage() {
           </div>
         </div>
       )}
+
+      {/* Action Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmAction !== null}
+        title={confirmAction?.title || ''}
+        message={confirmAction?.message || ''}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={handleConfirmedAction}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 }

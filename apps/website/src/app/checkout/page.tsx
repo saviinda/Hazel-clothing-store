@@ -42,18 +42,20 @@ export default function CheckoutPage() {
 
     async function init() {
       try {
-        // 1. Auto-fill from signed-in customer profile
         const { data: authData } = await browserSupabase.auth.getUser();
-        if (authData?.user) {
-          const meta = authData.user.user_metadata || {};
-          if (meta.name)  setName(meta.name);
-          if (authData.user.email) setEmail(authData.user.email);
-          if (meta.phone) setPhone(meta.phone);
-          if (meta.address) {
-            if (meta.address.street)      setStreet(meta.address.street);
-            if (meta.address.city)        setCity(meta.address.city);
-            if (meta.address.postal_code) setPostalCode(meta.address.postal_code);
-          }
+        if (!authData?.user) {
+          router.push('/profile?redirect=/checkout&message=Please sign in to complete your checkout.');
+          return;
+        }
+        
+        const meta = authData.user.user_metadata || {};
+        if (meta.name)  setName(meta.name);
+        if (authData.user.email) setEmail(authData.user.email);
+        if (meta.phone) setPhone(meta.phone);
+        if (meta.address) {
+          if (meta.address.street)      setStreet(meta.address.street);
+          if (meta.address.city)        setCity(meta.address.city);
+          if (meta.address.postal_code) setPostalCode(meta.address.postal_code);
         }
 
         // 2. Fetch delivery fee

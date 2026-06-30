@@ -14,6 +14,7 @@ export async function logoutAction() {
     await destroySession(adminClient, sessionId);
     cookieStore.delete('hz_session_id');
   }
+  cookieStore.delete('hz_session_last_renew');
 
   // Also sign out of Supabase to clear its cookies
   const supabase = await createClient();
@@ -33,6 +34,7 @@ export async function logoutAllDevicesAction(userId: string) {
   
   const cookieStore = await cookies();
   cookieStore.delete('hz_session_id');
+  cookieStore.delete('hz_session_last_renew');
   
   const supabase = await createClient();
   await supabase.auth.signOut();

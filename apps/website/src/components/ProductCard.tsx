@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Product } from '@hazel/shared';
 import { ShoppingBag } from 'lucide-react';
 import { useCart } from '../store/useCart';
+import { supabase } from '../lib/supabase';
 
 interface ProductCardProps {
   product: Product;
@@ -13,8 +14,13 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const addItem = useCart((state) => state.addItem);
 
-  const handleQuickAdd = (e: React.MouseEvent) => {
+  const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      window.location.href = `/profile?redirect=/shop&message=Please sign in to purchase items.`;
+      return;
+    }
     addItem({
       product_id: product.id,
       name: product.name,

@@ -56,7 +56,7 @@ export default function CustomersPage() {
           .from('customers')
           .select('*')
           .order('created_at', { ascending: false });
-        
+
         const { data: orderData } = await supabase
           .from('orders')
           .select('*')
@@ -71,6 +71,42 @@ export default function CustomersPage() {
       }
     }
     loadData();
+
+    // Real-time subscription for customers and orders tables
+    const customersChannel = supabase
+      .channel('customers-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'customers'
+        },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    const ordersChannel = supabase
+      .channel('orders-changes-customers')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(customersChannel);
+      supabase.removeChannel(ordersChannel);
+    };
   }, []);
 
   // Filter customers by search term

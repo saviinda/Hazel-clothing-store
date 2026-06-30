@@ -45,11 +45,11 @@ CREATE TABLE IF NOT EXISTS public.products (
 
 -- 4. CUSTOMERS TABLE
 CREATE TABLE IF NOT EXISTS public.customers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE,
-    phone VARCHAR(50) NOT NULL,
-    address JSONB NOT NULL,
+    phone VARCHAR(50),
+    address JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -172,18 +172,30 @@ CREATE OR REPLACE TRIGGER tr_order_status_change
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.users (id, name, email, role, is_active)
-    VALUES (
-        NEW.id,
-        COALESCE(NEW.raw_user_metadata->>'name', 'Administrator'),
-        NEW.email,
-        CASE 
-            WHEN NEW.email = 'superadmin@hazel.lk' OR NEW.email = 'superadmin@hazelclothing.lk' THEN 'Super Admin'
-            WHEN NEW.email = 'admin@hazel.com' OR NEW.email = 'admin@hazelclothing.lk' THEN 'Admin'
-            ELSE 'Staff'
-        END,
-        true
-    );
+    -- Only insert into users table if the user is NOT a customer
+    -- Customers are handled separately in the customers table
+    IF COALESCE(NEW.raw_user_metadata->>'role', '') != 'customer' THEN
+        INSERT INTO public.users (id, name, email, role, is_active)
+        VALUES (
+            NEW.id,
+            COALESCE(NEW.raw_user_metadata->>'name', 'Administrator'),
+            NEW.email,
+            CASE 
+                WHEN NEW.email = 'superadmin@hazel.lk' OR NEW.email = 'superadmin@hazel.com' OR NEW.email = 'superadmin@hazelclothing.lk' THEN 'Super Admin'
+                WHEN NEW.email = 'admin@hazel.com' OR NEW.email = 'admin@hazelclothing.lk' THEN 'Admin'
+                ELSE 'Staff'
+            END,
+            true
+        )
+        ON CONFLICT (id) DO UPDATE SET
+            role = CASE 
+                WHEN NEW.email = 'superadmin@hazel.lk' OR NEW.email = 'superadmin@hazel.com' OR NEW.email = 'superadmin@hazelclothing.lk' THEN 'Super Admin'
+                WHEN NEW.email = 'admin@hazel.com' OR NEW.email = 'admin@hazelclothing.lk' THEN 'Admin'
+                ELSE 'Staff'
+            END,
+            email = NEW.email,
+            name = COALESCE(NEW.raw_user_metadata->>'name', public.users.name);
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -192,6 +204,34 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW
     EXECUTE FUNCTION public.handle_new_user();
+
+-- AUTOMATIC CUSTOMER CREATION TRIGGER (On Supabase Auth Signup for customers)
+CREATE OR REPLACE FUNCTION public.handle_new_customer()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Only insert into customers table if the user IS a customer
+    IF COALESCE(NEW.raw_user_metadata->>'role', '') = 'customer' THEN
+        INSERT INTO public.customers (id, name, email, phone, address)
+        VALUES (
+            NEW.id,
+            COALESCE(NEW.raw_user_metadata->>'name', 'Customer'),
+            NEW.email,
+            COALESCE(NEW.raw_user_metadata->>'phone', ''),
+            COALESCE(NEW.raw_user_metadata->>'address', '{"street": "", "city": "", "postal_code": ""}')::jsonb
+        )
+        ON CONFLICT (email) DO UPDATE SET
+            name = COALESCE(NEW.raw_user_metadata->>'name', public.customers.name),
+            phone = COALESCE(NEW.raw_user_metadata->>'phone', public.customers.phone),
+            address = COALESCE((NEW.raw_user_metadata->>'address')::jsonb, public.customers.address);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_customer_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_new_customer();
 
 -- ROW LEVEL SECURITY (RLS) POLICIES
 

@@ -215,4 +215,23 @@ export class EmailService {
     `;
     return this.send({ toEmail: this.getAdminEmail(), toName: 'Hazel Admin', subject, htmlContent: html });
   }
+
+  // 6. Send Signup Verification Code
+  static async sendVerificationCode(customerEmail: string, customerName: string, code: string): Promise<boolean> {
+    const subject = `Verify your account - Hazel Clothing`;
+    const html = `
+      <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #f5ebe0; border-radius: 8px; background-color: #fdfaf6;">
+        <h2 style="color: #d4a373; text-align: center;">Welcome to Hazel Clothing!</h2>
+        <p>Hi ${customerName},</p>
+        <p>Thank you for registering with Hazel Clothing. Please use the verification code below to complete your sign-up process:</p>
+        <div style="background: #ffffff; border: 1px solid #f5ebe0; border-radius: 4px; padding: 15px; text-align: center; margin: 20px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #d4a373;">${code}</span>
+        </div>
+        <p style="font-size: 12px; color: #666;">This code is valid for 15 minutes. If you did not request this, please ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #f5ebe0; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #999; text-align: center;">Hazel Clothing Boutique · Sri Lanka</p>
+      </div>
+    `;
+    return this.send({ toEmail: customerEmail, toName: customerName, subject, htmlContent: html });
+  }
 }

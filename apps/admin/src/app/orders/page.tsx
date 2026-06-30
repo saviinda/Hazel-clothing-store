@@ -1,50 +1,74 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Order, OrderStatus, PaymentStatus } from '@hazel/shared';
-import { Loader2, Search, Filter, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Loader2, Search, Filter, ShieldCheck, ChevronRight, Radio } from 'lucide-react';
+import { useRealtimeTable } from '@/hooks/use-realtime-table';
 
 export default function OrdersListPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [revalidating, setRevalidating] = useState(false);
+  const [isLive, setIsLive] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [paymentFilter, setPaymentFilter] = useState<string>('');
 
-  useEffect(() => {
-    async function loadOrders() {
+  const loadOrders = useCallback(async (silent = false) => {
+    if (!silent) {
       setLoading(true);
-      try {
-        let query = supabase
-          .from('orders')
-          .select(`
-            *,
-            customer:customer_id (name, phone)
-          `)
-          .order('created_at', { ascending: false });
-
-        if (statusFilter) {
-          query = query.eq('order_status', statusFilter);
-        }
-        if (paymentFilter) {
-          query = query.eq('payment_status', paymentFilter);
-        }
-
-        const { data, error } = await query;
-        if (data) {
-          setOrders(data as unknown as Order[]);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+    } else {
+      setRevalidating(true);
     }
+    try {
+      let query = supabase
+        .from('orders')
+        .select(`
+          *,
+          customer:customer_id (name, phone)
+        `)
+        .order('created_at', { ascending: false });
 
-    loadOrders();
+      if (statusFilter) {
+        query = query.eq('order_status', statusFilter);
+      }
+      if (paymentFilter) {
+        query = query.eq('payment_status', paymentFilter);
+      }
+
+      const { data } = await query;
+      if (data) {
+        setOrders(data as unknown as Order[]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setRevalidating(false);
+      setIsLive(true);
+    }
   }, [statusFilter, paymentFilter]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  // ── Optimistic real-time updates ──────────────────────────────────────────
+  // INSERT: prepend new order without re-fetching (customer join won't be in
+  // the payload, so fall back to a silent re-fetch for new rows).
+  useRealtimeTable<Order & { id: string }>({ 
+    table: 'orders',
+    channelName: 'orders-rt',
+    onInsert: () => loadOrders(true),
+    onUpdate: (row) =>
+      setOrders(prev =>
+        prev.map(o => (o.id === row.id ? { ...o, ...row } : o))
+      ),
+    onDelete: (row) =>
+      setOrders(prev => prev.filter(o => o.id !== row.id)),
+  });
 
   // Client side search filter
   const filteredOrders = orders.filter((ord) => {
@@ -57,6 +81,18 @@ export default function OrdersListPage() {
 
   return (
     <div className="bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-6 animate-fade-in">
+      {/* Header row with Live badge */}
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row items-start gap-1">
+          <h4 className="font-serif text-lg font-bold text-brand-secondary">All Orders</h4>
+        </div>
+        {isLive && (
+          <div className="flex items-center gap-2">
+            <Radio size={12} className="text-green-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Live</span>
+          </div>
+        )}
+      </div>
       {/* Search & Filter Controls */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Search */}
@@ -117,7 +153,12 @@ export default function OrdersListPage() {
         </div>
       ) : (
         /* Orders Table */
-        <div className="overflow-x-auto -mx-6 px-6">
+        <div className={`overflow-x-auto -mx-6 px-6 transition-opacity duration-200 relative ${revalidating ? 'opacity-60 pointer-events-none' : ''}`}>
+          {revalidating && (
+            <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px] flex items-center justify-center z-10 rounded">
+              <Loader2 className="animate-spin text-brand-primary" size={24} />
+            </div>
+          )}
           <div className="min-w-[800px]">
             <table className="w-full text-left border-collapse text-sm">
               <thead>

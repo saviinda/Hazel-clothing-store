@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { logoutAction } from '@/app/actions/auth';
@@ -34,6 +34,9 @@ export default function AdminShell({ children }: AdminShellProps) {
   const [loading, setLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Cache the profile so we never re-fetch on route changes
+  const profileLoaded = useRef(false);
+
   // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -44,7 +47,16 @@ export default function AdminShell({ children }: AdminShellProps) {
     return () => document.body.classList.remove('mobile-menu-open');
   }, [isMobileMenuOpen]);
 
+  // Only load profile ONCE — not on every pathname change
   useEffect(() => {
+    if (pathname === '/login') {
+      setLoading(false);
+      return;
+    }
+
+    // Skip if already loaded
+    if (profileLoaded.current) return;
+
     async function loadUserProfile() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -62,8 +74,8 @@ export default function AdminShell({ children }: AdminShellProps) {
 
         let finalProfile = profile as User | null;
 
-        // Force superadmin@hazel.lk and admin@hazel.com to correct roles locally in frontend shell
-        if (user.email === 'superadmin@hazel.lk') {
+        // Force known accounts to correct roles
+        if (user.email === 'superadmin@hazel.lk' || user.email === 'superadmin@hazel.com') {
           finalProfile = {
             id: user.id,
             name: profile?.name || 'Super Admin',
@@ -95,7 +107,6 @@ export default function AdminShell({ children }: AdminShellProps) {
         if (finalProfile) {
           setUserProfile(finalProfile);
         } else {
-          // Fallback if public profile does not exist yet (default to Staff)
           setUserProfile({
             id: user.id,
             name: user.user_metadata?.name || 'Administrator',
@@ -105,6 +116,8 @@ export default function AdminShell({ children }: AdminShellProps) {
             created_at: new Date().toISOString()
           });
         }
+
+        profileLoaded.current = true;
       } catch (err) {
         console.error(err);
       } finally {
@@ -112,28 +125,19 @@ export default function AdminShell({ children }: AdminShellProps) {
       }
     }
 
-    if (pathname !== '/login') {
-      loadUserProfile();
-    } else {
-      setLoading(false);
-    }
-  }, [pathname, router]);
+    loadUserProfile();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ← Run only once on mount, not on pathname changes
 
   const handleLogout = async () => {
-    setLoading(true); // show loader during logout
+    profileLoaded.current = false;
+    setUserProfile(null);
+    setLoading(true);
     await logoutAction();
   };
 
   if (pathname === '/login') {
     return <>{children}</>;
-  }
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-brand-primary-cream">
-        <Loader2 className="animate-spin text-brand-primary" size={32} />
-      </div>
-    );
   }
 
   const role: AdminRole = userProfile?.role || 'Staff';
@@ -155,6 +159,78 @@ export default function AdminShell({ children }: AdminShellProps) {
   const currentPageLabel =
     menuItems.find((item) => item.path === pathname || (item.path !== '/' && pathname.startsWith(item.path)))?.label || 'Dashboard';
 
+  // Show a skeleton shell while loading — sidebar stays visible, only main content shows spinner
+  const sidebarContent = (
+    <aside className={`
+      fixed top-16 bottom-0 left-0 z-40 transform bg-brand-secondary text-brand-primary-cream flex flex-col justify-between flex-shrink-0 border-r border-brand-primary/10 w-[min(100%,280px)] transition-transform duration-300 ease-in-out
+      md:top-0 md:relative md:translate-x-0 md:w-64 md:h-full
+      ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+    `}>
+      <div>
+        {/* Brand Header */}
+        <div className="flex h-16 md:h-20 items-center justify-center border-b border-brand-primary-cream/10 px-4">
+          <Link href="/" className="flex flex-col items-center gap-0.5">
+            <span className="font-serif text-2xl font-bold tracking-[0.12em] text-brand-primary-cream leading-none">HAZEL</span>
+            <span className="text-[7px] tracking-[0.28em] text-[#d4a373] uppercase font-medium">Admin Portal</span>
+          </Link>
+        </div>
+
+        {/* Links menu */}
+        <nav className="p-4 space-y-1.5">
+          {menuItems.map((item) => {
+            if (item.hide) return null;
+            const Icon = item.icon;
+            const active = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
+            return (
+              <Link
+                key={item.label}
+                href={item.path}
+                className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded transition duration-200 ${
+                  active 
+                    ? 'bg-brand-primary text-white shadow' 
+                    : 'hover:bg-brand-primary-light/5 text-brand-primary-cream/70 hover:text-brand-primary-cream'
+                }`}
+              >
+                <Icon size={18} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* User Info & Logout */}
+      <div className="p-4 border-t border-brand-primary-cream/10 space-y-4">
+        {loading ? (
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-9 h-9 rounded-full bg-brand-primary-cream/10 animate-pulse" />
+            <div className="space-y-1.5 flex-1">
+              <div className="h-3 w-24 bg-brand-primary-cream/10 rounded animate-pulse" />
+              <div className="h-2 w-16 bg-brand-primary-cream/10 rounded animate-pulse" />
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 px-2">
+            <UserCircle size={36} className="text-brand-primary" />
+            <div className="overflow-hidden">
+              <p className="text-sm font-bold truncate">{userProfile?.name || 'Admin User'}</p>
+              <span className="inline-flex items-center rounded-full bg-brand-primary/15 px-2 py-0.5 text-[9px] font-bold text-brand-primary-light uppercase">
+                {role}
+              </span>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold rounded text-red-400 hover:bg-red-500/5 hover:text-red-300 transition duration-200"
+        >
+          <LogOut size={18} />
+          Sign Out
+        </button>
+      </div>
+    </aside>
+  );
+
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-brand-primary-cream">
       {/* Mobile Top Header */}
@@ -173,64 +249,7 @@ export default function AdminShell({ children }: AdminShellProps) {
       </div>
 
       {/* Sidebar Navigation */}
-      <aside className={`
-        fixed top-16 bottom-0 left-0 z-40 transform bg-brand-secondary text-brand-primary-cream flex flex-col justify-between flex-shrink-0 border-r border-brand-primary/10 w-[min(100%,280px)] transition-transform duration-300 ease-in-out
-        md:top-0 md:relative md:translate-x-0 md:w-64 md:h-full
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div>
-          {/* Brand Header — text only */}
-          <div className="flex h-16 md:h-20 items-center justify-center border-b border-brand-primary-cream/10 px-4">
-            <Link href="/" className="flex flex-col items-center gap-0.5">
-              <span className="font-serif text-2xl font-bold tracking-[0.12em] text-brand-primary-cream leading-none">HAZEL</span>
-              <span className="text-[7px] tracking-[0.28em] text-[#d4a373] uppercase font-medium">Admin Portal</span>
-            </Link>
-          </div>
-
-          {/* Links menu */}
-          <nav className="p-4 space-y-1.5">
-            {menuItems.map((item) => {
-              if (item.hide) return null;
-              const Icon = item.icon;
-              const active = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
-              return (
-                <Link
-                  key={item.label}
-                  href={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded transition duration-200 ${
-                    active 
-                      ? 'bg-brand-primary text-white shadow' 
-                      : 'hover:bg-brand-primary-light/5 text-brand-primary-cream/70 hover:text-brand-primary-cream'
-                  }`}
-                >
-                  <Icon size={18} />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* User Info & Logout */}
-        <div className="p-4 border-t border-brand-primary-cream/10 space-y-4">
-          <div className="flex items-center gap-3 px-2">
-            <UserCircle size={36} className="text-brand-primary" />
-            <div className="overflow-hidden">
-              <p className="text-sm font-bold truncate">{userProfile?.name || 'Admin User'}</p>
-              <span className="inline-flex items-center rounded-full bg-brand-primary/15 px-2 py-0.5 text-[9px] font-bold text-brand-primary-light uppercase">
-                {role}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold rounded text-red-400 hover:bg-red-500/5 hover:text-red-300 transition duration-200"
-          >
-            <LogOut size={18} />
-            Sign Out
-          </button>
-        </div>
-      </aside>
+      {sidebarContent}
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
@@ -242,7 +261,7 @@ export default function AdminShell({ children }: AdminShellProps) {
 
       {/* Main Panel */}
       <div className="flex flex-col flex-1 h-full overflow-hidden w-full min-w-0 pt-16 md:pt-0">
-        {/* Top Header (Desktop only or shared) */}
+        {/* Top Header (Desktop) */}
         <header className="hidden md:flex h-20 items-center justify-between border-b border-brand-primary-light/20 bg-white px-6 lg:px-8 shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
             <span className="h-6 w-1 rounded-full bg-brand-primary inline-block shrink-0" />
@@ -258,7 +277,14 @@ export default function AdminShell({ children }: AdminShellProps) {
 
         {/* Content body */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-zinc-50/50 relative w-full min-w-0">
-          {children}
+          {loading ? (
+            // Show skeleton in content area while loading — layout stays intact
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="animate-spin text-brand-primary" size={32} />
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>

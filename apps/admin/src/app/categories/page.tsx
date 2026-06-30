@@ -4,16 +4,21 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Category } from '@hazel/shared';
 import { Loader2, Plus, Edit2, Trash2, Search, Upload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function CategoriesPage() {
+  const { toast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [revalidating, setRevalidating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteCatId, setConfirmDeleteCatId] = useState<string | null>(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -23,8 +28,12 @@ export default function CategoriesPage() {
   const [isActive, setIsActive] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  const loadCategories = async () => {
-    setLoading(true);
+  const loadCategories = async (silent = false) => {
+    if (categories.length === 0 || !silent) {
+      setLoading(true);
+    } else {
+      setRevalidating(true);
+    }
     try {
       const { data } = await supabase
         .from('categories')
@@ -36,11 +45,34 @@ export default function CategoriesPage() {
       console.error(err);
     } finally {
       setLoading(false);
+      setRevalidating(false);
     }
   };
 
   useEffect(() => {
     loadCategories();
+  }, []);
+
+  // Real-time subscription for categories table
+  useEffect(() => {
+    const channel = supabase
+      .channel('categories-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'categories'
+        },
+        () => {
+          loadCategories(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const openAddModal = () => {
@@ -95,7 +127,7 @@ export default function CategoriesPage() {
       setImageUrl(uploadData.secure_url);
     } catch (err) {
       console.error(err);
-      alert('Error uploading category image.');
+      toast.error('Error uploading category image.');
     } finally {
       setUploadingImage(false);
     }
@@ -133,28 +165,17 @@ export default function CategoriesPage() {
       }
 
       setIsModalOpen(false);
-      await loadCategories();
+      toast.success(currentCategory ? 'Category updated successfully!' : 'Category created successfully!');
+      await loadCategories(true);
     } catch (err: any) {
-      alert(err.message || 'Saving category failed.');
+      toast.error(err.message || 'Saving category failed.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (catId: string) => {
-    if (!confirm('Are you sure you want to delete this category? All subcategories might be affected.')) return;
-
-    try {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', catId);
-
-      if (error) throw new Error(error.message);
-      await loadCategories();
-    } catch (err: any) {
-      alert(err.message || 'Delete category failed.');
-    }
+    setConfirmDeleteCatId(catId);
   };
 
   // Filter lists by search
@@ -195,7 +216,12 @@ export default function CategoriesPage() {
           <Loader2 className="animate-spin text-brand-primary" size={32} />
         </div>
       ) : (
-        <div className="overflow-x-auto -mx-6 px-6">
+        <div className={`overflow-x-auto -mx-6 px-6 transition-opacity duration-200 relative ${revalidating ? 'opacity-60 pointer-events-none' : ''}`}>
+          {revalidating && (
+            <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px] flex items-center justify-center z-10 rounded">
+              <Loader2 className="animate-spin text-brand-primary" size={24} />
+            </div>
+          )}
           <div className="min-w-[700px]">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
@@ -380,6 +406,34 @@ export default function CategoriesPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmDeleteCatId !== null}
+        title="Delete Category"
+        message="Are you sure you want to delete this category? All subcategories might be affected."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={async () => {
+          if (!confirmDeleteCatId) return;
+          const catId = confirmDeleteCatId;
+          setConfirmDeleteCatId(null);
+          try {
+            const { error } = await supabase
+              .from('categories')
+              .delete()
+              .eq('id', catId);
+
+            if (error) throw new Error(error.message);
+            toast.success('Category deleted successfully!');
+            await loadCategories(true);
+          } catch (err: any) {
+            toast.error(err.message || 'Delete category failed.');
+          }
+        }}
+        onCancel={() => setConfirmDeleteCatId(null)}
+      />
     </div>
   );
 }

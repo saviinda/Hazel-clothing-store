@@ -3,13 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Loader2, Save, Upload, Plus, Trash2, Star, StarOff, Image as ImageIcon, Video, Play, Pause, Eye, EyeOff, Edit } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import ConfirmModal from '@/components/ConfirmModal';
 
 type Tab = 'new_arrivals' | 'hero' | 'testimonials' | 'size_guide' | 'video_feed';
 
 export default function ContentManagerPage() {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>('new_arrivals');
   const [loading, setLoading] = useState(true);
+  const [revalidating, setRevalidating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteVideoIndex, setConfirmDeleteVideoIndex] = useState<number | null>(null);
 
   // ── New Arrivals (featured products) ──
   const [allProducts, setAllProducts] = useState<any[]>([]);
@@ -48,8 +53,12 @@ export default function ContentManagerPage() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingVideoThumb, setUploadingVideoThumb] = useState(false);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (allProducts.length === 0 || !silent) {
+      setLoading(true);
+    } else {
+      setRevalidating(true);
+    }
     try {
       // Load all active products for New Arrivals management
       const { data: prodData } = await supabase
@@ -95,6 +104,7 @@ export default function ContentManagerPage() {
       console.error(err);
     } finally {
       setLoading(false);
+      setRevalidating(false);
     }
   };
 
@@ -123,7 +133,7 @@ export default function ContentManagerPage() {
         detail: { product_id: productId }
       });
     } catch (err: any) {
-      alert('Failed to update featured status: ' + err.message);
+      toast.error('Failed to update featured status: ' + err.message);
     }
   };
 
@@ -160,7 +170,7 @@ export default function ContentManagerPage() {
     try {
       setHeroImageUrl(await uploadHeroImage(file));
     } catch (err) {
-      alert('Error uploading hero banner image.');
+      toast.error('Error uploading hero banner image.');
     } finally {
       setUploadingHero(false);
       e.target.value = '';
@@ -175,7 +185,7 @@ export default function ContentManagerPage() {
       const url = await uploadHeroImage(file);
       setHeroMobileImages(prev => [...prev, url]);
     } catch (err) {
-      alert('Error uploading mobile banner image.');
+      toast.error('Error uploading mobile banner image.');
     } finally {
       setUploadingMobileHero(false);
       e.target.value = '';
@@ -206,9 +216,10 @@ export default function ContentManagerPage() {
       );
       if (error) throw new Error(error.message);
       await supabase.from('audit_logs').insert({ admin_id: userId, action: 'edit_hero_banner', module: 'content', detail: heroPayload });
-      alert('Hero Banner updated successfully!');
+      toast.success('Hero Banner updated successfully!');
+      await loadData(true);
     } catch (err: any) {
-      alert(err.message || 'Saving banner failed.');
+      toast.error(err.message || 'Saving banner failed.');
     } finally {
       setSaving(false);
     }
@@ -226,9 +237,10 @@ export default function ContentManagerPage() {
       );
       if (error) throw new Error(error.message);
       await supabase.from('audit_logs').insert({ admin_id: userId, action: 'edit_testimonials', module: 'content', detail: { reviews_count: reviews.length } });
-      alert('Customer reviews updated successfully!');
+      toast.success('Customer reviews updated successfully!');
+      await loadData(true);
     } catch (err: any) {
-      alert(err.message || 'Saving reviews failed.');
+      toast.error(err.message || 'Saving reviews failed.');
     } finally {
       setSaving(false);
     }
@@ -251,7 +263,7 @@ export default function ContentManagerPage() {
       const url = await uploadHeroImage(file);
       setSizeGuideImages(prev => ({ ...prev, [selectedCategory]: url }));
     } catch (err) {
-      alert('Error uploading size guide image.');
+      toast.error('Error uploading size guide image.');
     } finally {
       setUploadingSizeGuide(false);
       e.target.value = '';
@@ -270,9 +282,10 @@ export default function ContentManagerPage() {
       );
       if (error) throw new Error(error.message);
       await supabase.from('audit_logs').insert({ admin_id: userId, action: 'edit_size_guide', module: 'content', detail: { categories_count: Object.keys(sizeGuideImages).length } });
-      alert('Size Guide updated successfully!');
+      toast.success('Size Guide updated successfully!');
+      await loadData(true);
     } catch (err: any) {
-      alert(err.message || 'Saving size guide failed.');
+      toast.error(err.message || 'Saving size guide failed.');
     } finally {
       setSaving(false);
     }
@@ -290,8 +303,9 @@ export default function ContentManagerPage() {
       );
       if (error) throw new Error(error.message);
       await supabase.from('audit_logs').insert({ admin_id: userId, action: 'edit_video_feed', module: 'content', detail: { videos_count: videoList.length } });
+      await loadData(true);
     } catch (err: any) {
-      alert('Failed to save video changes: ' + err.message);
+      toast.error('Failed to save video changes: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -331,7 +345,7 @@ export default function ContentManagerPage() {
         setVideoThumbnailUrl(autoThumb);
       }
     } catch (err: any) {
-      alert('Error uploading video: ' + err.message);
+      toast.error('Error uploading video: ' + err.message);
     } finally {
       setUploadingVideo(false);
       e.target.value = '';
@@ -346,7 +360,7 @@ export default function ContentManagerPage() {
       const url = await uploadHeroImage(file);
       setVideoThumbnailUrl(url);
     } catch (err: any) {
-      alert('Error uploading thumbnail: ' + err.message);
+      toast.error('Error uploading thumbnail: ' + err.message);
     } finally {
       setUploadingVideoThumb(false);
       e.target.value = '';
@@ -382,7 +396,7 @@ export default function ContentManagerPage() {
   const handleSaveVideoItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!videoUrl || !videoTitle) {
-      alert('Please fill in a title and upload a video.');
+      toast.warning('Please fill in a title and upload a video.');
       return;
     }
 
@@ -405,15 +419,11 @@ export default function ContentManagerPage() {
     setVideos(updated);
     setIsEditingVideo(false);
     await saveVideos(updated);
-    alert('Video saved successfully!');
+    toast.success('Video saved successfully!');
   };
 
   const handleDeleteVideo = async (idx: number) => {
-    if (!confirm('Are you sure you want to delete this video?')) return;
-    const updated = videos.filter((_, i) => i !== idx);
-    setVideos(updated);
-    await saveVideos(updated);
-    alert('Video deleted successfully!');
+    setConfirmDeleteVideoIndex(idx);
   };
 
   const featuredProducts = allProducts.filter(p => p.is_featured);
@@ -427,7 +437,7 @@ export default function ContentManagerPage() {
   }
 
   return (
-    <div className="space-y-6 text-brand-secondary">
+    <div className={`space-y-6 text-brand-secondary transition-opacity duration-200 relative ${revalidating ? 'opacity-70 pointer-events-none' : ''}`}>
       {/* Tabs */}
       <div className="scroll-tabs border-b border-brand-primary-light/15">
         {([
@@ -972,6 +982,26 @@ export default function ContentManagerPage() {
               </div>
             </div>
           )}
+
+          {/* Delete Confirmation Modal */}
+          <ConfirmModal
+            isOpen={confirmDeleteVideoIndex !== null}
+            title="Delete Video"
+            message="Are you sure you want to delete this video?"
+            confirmText="Delete"
+            cancelText="Cancel"
+            type="danger"
+            onConfirm={async () => {
+              if (confirmDeleteVideoIndex === null) return;
+              const idx = confirmDeleteVideoIndex;
+              setConfirmDeleteVideoIndex(null);
+              const updated = videos.filter((_, i) => i !== idx);
+              setVideos(updated);
+              await saveVideos(updated);
+              toast.success('Video deleted successfully!');
+            }}
+            onCancel={() => setConfirmDeleteVideoIndex(null)}
+          />
         </div>
       )}
     </div>

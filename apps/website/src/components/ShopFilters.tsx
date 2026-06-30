@@ -12,6 +12,7 @@ interface ShopFiltersProps {
   activeCategorySlug: string;
   filterSize: string;
   filterColor: string;
+  onFilterChange: (type: 'category' | 'size' | 'color' | 'clear', value: string) => void;
 }
 
 export default function ShopFilters({
@@ -21,6 +22,7 @@ export default function ShopFilters({
   activeCategorySlug,
   filterSize,
   filterColor,
+  onFilterChange,
 }: ShopFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
   const hasActiveFilters = !!(activeCategorySlug || filterSize || filterColor);
@@ -31,7 +33,7 @@ export default function ShopFilters({
       <div className="md:hidden mb-2">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex w-full items-center justify-between gap-2 border border-brand-primary-light/30 rounded bg-white px-4 py-3 text-sm font-bold text-brand-secondary"
+          className="flex w-full items-center justify-between gap-2 border border-brand-primary-light/30 rounded bg-white px-4 py-3 text-sm font-bold text-brand-secondary cursor-pointer"
         >
           <span className="flex items-center gap-2">
             <SlidersHorizontal size={16} className="text-brand-primary" />
@@ -55,6 +57,7 @@ export default function ShopFilters({
               activeCategorySlug={activeCategorySlug}
               filterSize={filterSize}
               filterColor={filterColor}
+              onFilterChange={onFilterChange}
             />
           </div>
         )}
@@ -69,6 +72,7 @@ export default function ShopFilters({
           activeCategorySlug={activeCategorySlug}
           filterSize={filterSize}
           filterColor={filterColor}
+          onFilterChange={onFilterChange}
         />
       </aside>
     </>
@@ -82,6 +86,7 @@ function FilterContent({
   activeCategorySlug,
   filterSize,
   filterColor,
+  onFilterChange,
 }: ShopFiltersProps) {
   return (
     <>
@@ -92,6 +97,7 @@ function FilterContent({
           <li>
             <Link
               href="/shop"
+              onClick={(e) => { e.preventDefault(); onFilterChange('category', ''); }}
               className={`block py-1 hover:text-brand-primary transition ${!activeCategorySlug ? 'text-brand-primary' : 'text-brand-secondary/70'}`}
             >
               All Products
@@ -101,6 +107,7 @@ function FilterContent({
             <li key={cat.id}>
               <Link
                 href={`/shop?category=${cat.slug}${filterSize ? `&size=${filterSize}` : ''}${filterColor ? `&color=${filterColor}` : ''}`}
+                onClick={(e) => { e.preventDefault(); onFilterChange('category', cat.slug); }}
                 className={`block py-1 hover:text-brand-primary transition ${activeCategorySlug === cat.slug ? 'text-brand-primary' : 'text-brand-secondary/70'}`}
               >
                 {cat.name}
@@ -125,10 +132,11 @@ function FilterContent({
                 <Link
                   key={size}
                   href={link}
+                  onClick={(e) => { e.preventDefault(); onFilterChange('size', size); }}
                   className={`flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded border text-xs font-bold transition ${
                     active
-                      ? 'border-brand-primary bg-brand-primary text-white'
-                      : 'border-brand-primary-light/30 bg-white text-brand-secondary hover:border-brand-primary'
+                      ? 'border-brand-primary bg-brand-primary text-white border-brand-primary'
+                      : 'border-brand-primary-light/30 bg-white text-brand-secondary hover:border-brand-primary border-brand-primary-light/30'
                   }`}
                 >
                   {size}
@@ -143,27 +151,32 @@ function FilterContent({
       {allColors.length > 0 && (
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-brand-secondary/40 mb-4">Filter By Color</h3>
-          <div className="flex flex-col gap-2 text-sm font-semibold">
+          <div className="flex flex-col gap-1">
             {allColors.map((color) => {
-              const active = filterColor === color;
-              const link = `/shop?${activeCategorySlug ? `category=${activeCategorySlug}&` : ''}${filterSize ? `size=${filterSize}&` : ''}color=${active ? '' : color}`;
+              const active = filterColor.toLowerCase().trim() === color.toLowerCase().trim();
+              const id = `color-radio-${color.replace(/\s+/g, '-').toLowerCase()}`;
               return (
-                <Link
+                <label
                   key={color}
-                  href={link}
-                  className={`flex items-center gap-2 py-1 hover:text-brand-primary transition ${active ? 'text-brand-primary' : 'text-brand-secondary/70'}`}
+                  htmlFor={id}
+                  className="flex items-center gap-3 py-1.5 w-full cursor-pointer group select-none"
                 >
-                  <span
-                    className="h-3 w-3 rounded-full border border-brand-primary-light/45 flex-shrink-0"
-                    style={{
-                      backgroundColor:
-                        color.toLowerCase().includes('wash') || color.toLowerCase().includes('denim')
-                          ? '#8da9c4'
-                          : color.replace(/\s+/g, '').toLowerCase(),
-                    }}
+                  <input
+                    type="radio"
+                    id={id}
+                    name="color-filter"
+                    value={color}
+                    checked={active}
+                    onChange={() => onFilterChange('color', color)}
+                    onClick={() => { if (active) onFilterChange('color', color); }}
+                    className="h-4 w-4 accent-brand-primary cursor-pointer flex-shrink-0"
                   />
-                  {color}
-                </Link>
+                  <span className={`text-xs font-bold tracking-wide uppercase transition ${
+                    active ? 'text-brand-primary' : 'text-brand-secondary/70 group-hover:text-brand-primary'
+                  }`}>
+                    {color}
+                  </span>
+                </label>
               );
             })}
           </div>
@@ -174,6 +187,7 @@ function FilterContent({
       {(activeCategorySlug || filterSize || filterColor) && (
         <Link
           href="/shop"
+          onClick={(e) => { e.preventDefault(); onFilterChange('clear', ''); }}
           className="block text-xs font-bold text-red-500 hover:text-red-700 transition border border-red-200 rounded px-3 py-2 text-center"
         >
           Clear All Filters

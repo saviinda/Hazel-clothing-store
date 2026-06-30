@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@hazel/database';
+import { getCallerRole } from '@/lib/auth';
+
 
 export async function GET(
   request: NextRequest,
@@ -30,9 +32,41 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const callerRole = await getCallerRole();
+    if (callerRole !== 'Super Admin' && callerRole !== 'Admin') {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: Only Super Admins and Admins can update users.' },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
     const body = await request.json();
     const adminClient = getSupabaseAdminClient();
+
+    // Get target user role
+    const { data: targetUser } = await adminClient
+      .from('users')
+      .select('role')
+      .eq('id', id)
+      .single();
+
+    const targetRole = targetUser?.role;
+
+    if (callerRole === 'Admin') {
+      if (targetRole !== 'Staff') {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden: Admins can only update Staff users.' },
+          { status: 403 }
+        );
+      }
+      if (body.role && body.role !== 'Staff') {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden: Admins cannot assign roles other than Staff.' },
+          { status: 403 }
+        );
+      }
+    }
 
     // Prevent changing role to Super Admin
     if (body.role === 'Super Admin') {
@@ -86,46 +120,104 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  console.log('[DELETE API] ===== DELETE REQUEST START =====');
   try {
     const { id } = await params;
-    const adminClient = getSupabaseAdminClient();
+    console.log('[DELETE API] User ID to delete:', id);
 
-    // Prevent deleting the last Super Admin or check role first
-    const { data: userProfile, error: getError } = await adminClient
-      .from('users')
-      .select('role')
-      .eq('id', id)
-      .single();
+    const callerRole = await getCallerRole();
+    console.log('[DELETE API] Caller role:', callerRole);
 
-    if (getError) throw getError;
-
-    if (userProfile?.role === 'Super Admin') {
+    if (callerRole !== 'Super Admin' && callerRole !== 'Admin') {
+      console.log('[DELETE API] Permission denied - caller role:', callerRole);
       return NextResponse.json(
-        { success: false, error: 'Deleting the Super Admin account is not allowed' },
-        { status: 400 }
+        { success: false, error: 'Forbidden: Only Super Admins and Admins can delete users.' },
+        { status: 403 }
       );
     }
 
-    // 1. Delete user from Supabase Auth using admin API
-    const { error: authError } = await adminClient.auth.admin.deleteUser(id);
-    if (authError) {
-      console.warn('Auth deletion warning (user might not exist in Auth):', authError.message);
+    const adminClient = getSupabaseAdminClient();
+    console.log('[DELETE API] Admin client created');
+
+    console.log('[DELETE API] Fetching target user...');
+    const { data: targetUser, error: fetchError } = await adminClient
+      .from('users')
+      .select('role, email')
+      .eq('id', id)
+      .single();
+
+    console.log('[DELETE API] Target user data:', targetUser);
+    console.log('[DELETE API] Fetch error:', fetchError);
+
+    if (!targetUser) {
+      console.log('[DELETE API] User not found');
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      );
     }
 
-    // 2. Delete user profile from users table (cascade delete will handle dependent tables like user_roles)
-    const { error: dbError } = await adminClient
+    const targetRole = targetUser.role;
+    console.log('[DELETE API] Target user role:', targetRole);
+
+    if (targetRole === 'Super Admin') {
+      console.log('[DELETE API] Cannot delete Super Admin');
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: Cannot delete Super Admin users.' },
+        { status: 403 }
+      );
+    }
+
+    if (callerRole === 'Admin' && targetRole !== 'Staff') {
+      console.log('[DELETE API] Admin cannot delete non-Staff user');
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: Admins can only delete Staff users.' },
+        { status: 403 }
+      );
+    }
+
+    console.log('[DELETE API] Deleting from user_roles...');
+    try {
+      await adminClient.from('user_roles').delete().eq('user_id', id);
+      console.log('[DELETE API] user_roles deleted (or table does not exist)');
+    } catch (roleErr: any) {
+      console.warn('[DELETE API] Error deleting from user_roles (table might not exist):', roleErr?.message);
+    }
+
+    console.log('[DELETE API] Deleting from users table...');
+    const { error: deleteError } = await adminClient
       .from('users')
       .delete()
       .eq('id', id);
 
-    if (dbError) throw dbError;
+    console.log('[DELETE API] Delete error:', deleteError);
 
+    if (deleteError) {
+      console.error('[DELETE API] Failed to delete user:', deleteError);
+      throw deleteError;
+    }
+
+    console.log('[DELETE API] User deleted from database');
+
+    console.log('[DELETE API] Deleting from Supabase Auth...');
+    try {
+      await adminClient.auth.admin.deleteUser(id);
+      console.log('[DELETE API] User deleted from Supabase Auth');
+    } catch (authErr: any) {
+      console.warn('[DELETE API] Error deleting from Supabase Auth (non-critical):', authErr?.message);
+    }
+
+    console.log('[DELETE API] ===== DELETE REQUEST SUCCESS =====');
     return NextResponse.json({ success: true, message: 'User deleted successfully' });
   } catch (error: any) {
-    console.error('Error deleting user:', error);
+    console.error('[DELETE API] ===== DELETE REQUEST FAILED =====');
+    console.error('[DELETE API] Error:', error);
+    console.error('[DELETE API] Error message:', error?.message);
+    console.error('[DELETE API] Error details:', JSON.stringify(error, null, 2));
     return NextResponse.json(
       { success: false, error: error.message || 'Failed to delete user' },
       { status: 500 }
     );
   }
 }
+

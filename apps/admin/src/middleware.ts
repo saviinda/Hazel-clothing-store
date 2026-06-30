@@ -15,8 +15,51 @@ function getExpirationTime() {
 }
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  // Bypass all middleware for API routes to prevent hanging
+  if (request.nextUrl.pathname.startsWith('/api')) {
+    return NextResponse.next();
+  }
 
+  const isLoginPath = request.nextUrl.pathname.startsWith('/login');
+  const sessionId = request.cookies.get('hz_session_id')?.value;
+  const isPrefetch =
+    request.headers.get('next-router-prefetch') === '1' ||
+    request.headers.get('purpose') === 'prefetch';
+
+  // 1. FAST PATH: Bypassing DB checks for prefetch requests if session cookie exists
+  if (isPrefetch) {
+    if (!sessionId && !isLoginPath) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+
+  let supabaseResponse = NextResponse.next();
+
+
+
+
+  // 2. THROTTLE PATH: Bypass database and auth api queries if verified recently (< 2 mins ago)
+  const lastRenewStr = request.cookies.get('hz_session_last_renew')?.value;
+  const now = new Date();
+  let shouldRenewInDb = true;
+
+  if (lastRenewStr && sessionId && !isLoginPath) {
+    const lastRenew = new Date(lastRenewStr);
+    const diffMs = now.getTime() - lastRenew.getTime();
+    const diffMins = diffMs / (1000 * 60);
+    if (diffMins < 2) {
+      shouldRenewInDb = false;
+    }
+  }
+
+  if (!shouldRenewInDb) {
+    return supabaseResponse;
+  }
+
+  // 3. FULL PATH: Perform Supabase getUser and DB query/update
   const supabase = createServerClient(
     supabaseUrl,
     supabaseAnonKey,
@@ -40,21 +83,19 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isLoginPath = request.nextUrl.pathname.startsWith('/login');
-  const sessionId = request.cookies.get('hz_session_id')?.value;
   let customSessionValid = false;
 
-  if (sessionId) {
+  if (sessionId && user) {
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    
-    const now = new Date().toISOString();
+
+    const nowStr = now.toISOString();
     const { data: session } = await adminClient
       .from('sessions')
       .select('id')
       .eq('id', sessionId)
-      .gt('expires_at', now)
+      .gt('expires_at', nowStr)
       .single();
 
     if (session) {
@@ -63,10 +104,19 @@ export async function middleware(request: NextRequest) {
         .from('sessions')
         .update({ expires_at: newExpiresAt })
         .eq('id', sessionId);
-        
+
       if (!error) {
         customSessionValid = true;
+
         supabaseResponse.cookies.set('hz_session_id', sessionId, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: SESSION_TIMEOUT_MINUTES * 60,
+        });
+
+        supabaseResponse.cookies.set('hz_session_last_renew', now.toISOString(), {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
@@ -80,11 +130,11 @@ export async function middleware(request: NextRequest) {
   if ((!user || !customSessionValid) && !isLoginPath) {
     if (user) {
       await supabase.auth.signOut();
-      supabaseResponse.cookies.delete('hz_session_id');
     }
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(new URL('/login', request.url));
+    redirectResponse.cookies.delete('hz_session_id');
+    redirectResponse.cookies.delete('hz_session_last_renew');
+    return redirectResponse;
   }
 
   if (user && customSessionValid && isLoginPath) {

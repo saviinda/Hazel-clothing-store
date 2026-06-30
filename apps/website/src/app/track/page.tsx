@@ -205,8 +205,13 @@ function TrackContent() {
     }
   };
 
-  // Find step progress index
-  const activeStepIndex = order ? STATUS_STEPS.indexOf(order.order_status) : -1;
+  // Derive active step — use the CURRENT order_status as the active step
+  // For Cancelled orders, show a separate banner instead of the timeline
+  const isCancelled = order?.order_status === 'Cancelled';
+  // activeStepIndex: the index of the CURRENT status in STATUS_STEPS
+  // A step is "completed" if its index is STRICTLY LESS THAN activeStepIndex
+  // A step is "active" if its index EQUALS activeStepIndex
+  const activeStepIndex = order ? STATUS_STEPS.indexOf(order.order_status as OrderStatus) : -1;
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12 md:px-12 w-full space-y-12">
@@ -275,43 +280,77 @@ function TrackContent() {
             </div>
           </div>
 
-          {/* Timeline Tracker */}
-          <div className="space-y-6">
-            <h4 className="text-sm font-bold text-brand-secondary uppercase tracking-wider">Status Timeline</h4>
-            <div className="relative flex flex-col xl:flex-row justify-between gap-4 xl:gap-2 mt-4 xl:mt-8">
-              {/* Timeline Connector Line */}
-              <div className="absolute top-0 bottom-0 left-[19px] xl:top-5 xl:bottom-auto xl:left-5 xl:right-5 h-full xl:h-0.5 bg-brand-primary-light/20 z-0" />
-              
-              {STATUS_STEPS.map((step, idx) => {
-                const isCompleted = idx < activeStepIndex;
-                const isActive = idx === activeStepIndex;
-                const isPending = idx > activeStepIndex;
-
-                return (
-                  <div key={step} className="flex xl:flex-col items-center xl:items-center text-left xl:text-center gap-4 xl:gap-2 z-10 flex-1 min-w-0">
-                    {/* Circle Indicator */}
-                    <div 
-                      className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center font-bold text-xs border transition duration-300 ${
-                        isCompleted 
-                          ? 'bg-green-600 border-green-600 text-white shadow' 
-                          : isActive 
-                            ? 'bg-brand-primary border-brand-primary text-white ring-4 ring-brand-primary-light/20 shadow' 
-                            : 'bg-white border-brand-primary-light/40 text-brand-secondary/40'
-                      }`}
-                    >
-                      {isCompleted ? '✓' : idx + 1}
-                    </div>
-                    {/* Label */}
-                    <div className="space-y-1 min-w-0">
-                      <span className={`text-xs font-bold block truncate xl:whitespace-normal ${isActive ? 'text-brand-primary' : isCompleted ? 'text-green-700' : 'text-brand-secondary/45'}`}>
-                        {step}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+          {/* Cancelled Banner */}
+          {isCancelled && (
+            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded">
+              <AlertTriangle size={20} className="text-red-600 shrink-0" />
+              <div>
+                <p className="font-bold text-red-800 text-sm">Order Cancelled</p>
+                <p className="text-xs text-red-600 mt-0.5">This order has been cancelled. Please contact us if you have any questions.</p>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Timeline Tracker — only show for non-cancelled orders */}
+          {!isCancelled && (
+            <div className="space-y-6">
+              <h4 className="text-sm font-bold text-brand-secondary uppercase tracking-wider">Status Timeline</h4>
+              <div className="relative flex flex-col xl:flex-row justify-between gap-4 xl:gap-2 mt-4 xl:mt-8">
+                {/* Timeline Connector Line */}
+                <div className="absolute top-0 bottom-0 left-[19px] xl:top-5 xl:bottom-auto xl:left-5 xl:right-5 h-full xl:h-0.5 bg-brand-primary-light/20 z-0" />
+                {/* Completed progress fill */}
+                {activeStepIndex > 0 && (
+                  <div
+                    className="absolute top-0 left-[19px] xl:top-5 xl:left-5 xl:bottom-auto bg-green-500 z-0 transition-all duration-500"
+                    style={{
+                      // Vertical (mobile): height proportional to completed steps
+                      height: `calc(${(activeStepIndex / (STATUS_STEPS.length - 1)) * 100}% )`,
+                      width: '2px',
+                      // Horizontal (xl): width proportional
+                    }}
+                  />
+                )}
+
+                {STATUS_STEPS.map((step, idx) => {
+                  const isCompleted = idx < activeStepIndex;
+                  const isActive = idx === activeStepIndex;
+                  const isPending = idx > activeStepIndex;
+
+                  return (
+                    <div key={step} className="flex xl:flex-col items-center xl:items-center text-left xl:text-center gap-4 xl:gap-2 z-10 flex-1 min-w-0">
+                      {/* Circle Indicator */}
+                      <div
+                        className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all duration-300 ${
+                          isCompleted
+                            ? 'bg-green-500 border-green-500 text-white shadow-sm'
+                            : isActive
+                              ? 'bg-brand-primary border-brand-primary text-white ring-4 ring-brand-primary/20 shadow-md'
+                              : 'bg-white border-brand-primary-light/30 text-brand-secondary/35'
+                        }`}
+                      >
+                        {isCompleted ? '✓' : isActive ? idx + 1 : idx + 1}
+                      </div>
+                      {/* Label */}
+                      <div className="space-y-0.5 min-w-0">
+                        <span className={`text-xs font-bold block truncate xl:whitespace-normal ${
+                          isActive
+                            ? 'text-brand-primary'
+                            : isCompleted
+                              ? 'text-green-700'
+                              : 'text-brand-secondary/35'
+                        }`}>
+                          {step}
+                        </span>
+                        {isActive && (
+                          <span className="text-[10px] text-brand-primary/70 font-medium hidden xl:block">Current</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Detail Breakdowns */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-brand-primary-light/10 pt-8">
