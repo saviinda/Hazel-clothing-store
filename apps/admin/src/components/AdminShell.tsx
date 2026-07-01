@@ -47,21 +47,24 @@ export default function AdminShell({ children }: AdminShellProps) {
     return () => document.body.classList.remove('mobile-menu-open');
   }, [isMobileMenuOpen]);
 
-  // Only load profile ONCE — not on every pathname change
+  // Load user profile when pathname changes
   useEffect(() => {
     if (pathname === '/login') {
       setLoading(false);
       return;
     }
 
-    // Skip if already loaded
-    if (profileLoaded.current) return;
-
     async function loadUserProfile() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           router.push('/login');
+          return;
+        }
+
+        // If profile is already loaded and is the same user, skip DB query
+        if (profileLoaded.current && userProfile?.id === user.id) {
+          setLoading(false);
           return;
         }
 
@@ -127,7 +130,34 @@ export default function AdminShell({ children }: AdminShellProps) {
 
     loadUserProfile();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ← Run only once on mount, not on pathname changes
+  }, [pathname]);
+
+  // Subscribe to changes on the current user's record in 'users' table
+  useEffect(() => {
+    if (!userProfile?.id) return;
+
+    const channel = supabase
+      .channel(`self-profile-${userProfile.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `id=eq.${userProfile.id}`
+        },
+        (payload) => {
+          if (payload.new) {
+            setUserProfile(prev => prev ? { ...prev, ...payload.new } : (payload.new as User));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userProfile?.id]);
 
   const handleLogout = async () => {
     profileLoaded.current = false;
@@ -153,7 +183,7 @@ export default function AdminShell({ children }: AdminShellProps) {
     { label: 'Store CMS', path: '/content', icon: FileEdit, hide: !isSuperOrAdmin },
     { label: 'Role Permissions', path: '/roles', icon: Shield, hide: !isSuperOrAdmin },
     { label: 'User Management', path: '/users', icon: Users, hide: !isSuperOrAdmin },
-    { label: 'Settings & Logs', path: '/settings', icon: Settings, hide: !isSuperOrAdmin },
+    { label: 'Settings & Profile', path: '/settings', icon: Settings },
   ];
 
   const currentPageLabel =

@@ -256,6 +256,81 @@ export default function SettingsAndLogsPage() {
     }
   };
 
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User session not found.');
+
+      if (!accountName.trim()) {
+        throw new Error('Name cannot be empty.');
+      }
+
+      const { error: profileError } = await supabase
+        .from('users')
+        .update({ name: accountName.trim() })
+        .eq('id', user.id);
+      if (profileError) throw profileError;
+
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { name: accountName.trim() }
+      });
+      if (authError) throw authError;
+
+      await supabase.from('audit_logs').insert({
+        admin_id: user.id,
+        action: 'edit_profile',
+        module: 'settings',
+        detail: { name: accountName }
+      });
+
+      toast.success('Profile details updated successfully!');
+    } catch (err: any) {
+      toast.error(err.message || 'Saving profile failed.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingPassword(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User session not found.');
+
+      if (!newPassword) {
+        throw new Error('New password cannot be empty.');
+      }
+      if (newPassword !== confirmPassword) {
+        throw new Error('New passwords do not match.');
+      }
+      if (newPassword.length < 6) {
+        throw new Error('Password must be at least 6 characters.');
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      await supabase.from('audit_logs').insert({
+        admin_id: user.id,
+        action: 'change_password',
+        module: 'settings',
+        detail: {}
+      });
+
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      toast.success('Password updated successfully!');
+    } catch (err: any) {
+      toast.error(err.message || 'Changing password failed.');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   // System Seeding / Truncate Commands
   const handleSystemAction = async (action: 'seed' | 'reset_orders' | 'reset_products') => {
     let title = 'System Action';
@@ -325,62 +400,173 @@ export default function SettingsAndLogsPage() {
     }
   };
 
+  const isSuperOrAdmin = accountRole === 'Super Admin' || accountRole === 'Admin';
+
   return (
     <div className={`space-y-8 text-brand-secondary transition-opacity duration-200 relative ${revalidating ? 'opacity-70 pointer-events-none' : ''}`}>
       {/* Settings Sub-Tabs */}
-      <div className="scroll-tabs border-b border-brand-primary-light/15">
+      <div className="scroll-tabs border-b border-brand-primary-light/15 flex flex-wrap">
         <button
-          onClick={() => setActiveTab('users')}
+          onClick={() => setActiveTab('account')}
           className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
-            activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
+            activeTab === 'account' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
           }`}
         >
-          <Users size={16} />
-          ADMINS DIRECTORY
+          <UserCircle size={16} />
+          MY PROFILE
         </button>
-        <button
-          onClick={() => setActiveTab('bank')}
-          className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
-            activeTab === 'bank' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
-          }`}
-        >
-          <Settings2 size={16} />
-          STORE & DELIVERY SETTINGS
-        </button>
-        <button
-          onClick={() => setActiveTab('contact')}
-          className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
-            activeTab === 'contact' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
-          }`}
-        >
-          <Phone size={16} />
-          CONTACT INFO
-        </button>
-        <button
-          onClick={() => setActiveTab('audits')}
-          className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
-            activeTab === 'audits' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
-          }`}
-        >
-          <History size={16} />
-          AUDIT LOGS
-        </button>
-        <button
-          onClick={() => setActiveTab('system')}
-          className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
-            activeTab === 'system' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
-          }`}
-        >
-          <RefreshCcw size={16} />
-          SYSTEM CONTROL
-        </button>
+        {isSuperOrAdmin && (
+          <>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
+                activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
+              }`}
+            >
+              <Users size={16} />
+              ADMINS DIRECTORY
+            </button>
+            <button
+              onClick={() => setActiveTab('bank')}
+              className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
+                activeTab === 'bank' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
+              }`}
+            >
+              <Settings2 size={16} />
+              STORE & DELIVERY SETTINGS
+            </button>
+            <button
+              onClick={() => setActiveTab('contact')}
+              className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
+                activeTab === 'contact' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
+              }`}
+            >
+              <Phone size={16} />
+              CONTACT INFO
+            </button>
+            <button
+              onClick={() => setActiveTab('audits')}
+              className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
+                activeTab === 'audits' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
+              }`}
+            >
+              <History size={16} />
+              AUDIT LOGS
+            </button>
+            <button
+              onClick={() => setActiveTab('system')}
+              className={`flex items-center gap-2 py-4 px-6 text-sm font-bold border-b-2 transition ${
+                activeTab === 'system' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-brand-secondary/60 hover:text-brand-primary'
+              }`}
+            >
+              <RefreshCcw size={16} />
+              SYSTEM CONTROL
+            </button>
+          </>
+        )}
       </div>
 
       {loading ? (
         <div className="flex h-[40vh] items-center justify-center">
           <Loader2 className="animate-spin text-brand-primary" size={32} />
         </div>
-      ) : activeTab === 'users' ? (
+      ) : activeTab === 'account' ? (
+        /* 0. My Profile Tab */
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          {/* User Details Form */}
+          <form onSubmit={handleSaveProfile} className="bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-5 text-xs font-bold">
+            <div className="flex items-center gap-2 border-b border-brand-primary-light/10 pb-4">
+              <UserCircle className="text-brand-primary" size={24} />
+              <h4 className="font-serif text-lg font-bold text-brand-secondary">My Profile Details</h4>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-brand-secondary/65 uppercase block">Full Name *</label>
+              <input
+                type="text"
+                required
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+                className="w-full border rounded p-3 bg-white outline-none focus:border-brand-primary text-sm font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-brand-secondary/65 uppercase block">Email Address (Read-only)</label>
+              <input
+                type="email"
+                disabled
+                value={accountEmail}
+                className="w-full border rounded p-3 bg-zinc-50 text-zinc-500 outline-none text-sm font-semibold cursor-not-allowed"
+              />
+              <p className="text-[10px] text-brand-secondary/45 font-medium">To change your registered email address, please contact a Super Administrator.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-brand-secondary/65 uppercase block">Assigned Role</label>
+              <div className="pt-1">
+                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                  accountRole === 'Super Admin' ? 'bg-red-100 text-red-800' :
+                  accountRole === 'Admin' ? 'bg-blue-100 text-blue-800' :
+                  'bg-zinc-100 text-zinc-800'
+                }`}>
+                  {accountRole || 'Staff'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingProfile}
+              className="w-full h-12 flex items-center justify-center gap-2 bg-brand-secondary hover:bg-brand-primary text-white font-bold text-xs tracking-widest rounded transition"
+            >
+              {savingProfile ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+              SAVE PROFILE DETAILS
+            </button>
+          </form>
+
+          {/* Change Password Form */}
+          <form onSubmit={handleChangePassword} className="bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-5 text-xs font-bold">
+            <div className="flex items-center gap-2 border-b border-brand-primary-light/10 pb-4">
+              <Lock className="text-brand-primary" size={24} />
+              <h4 className="font-serif text-lg font-bold text-brand-secondary">Security & Password</h4>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-brand-secondary/65 uppercase block">New Password *</label>
+              <input
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimum 6 characters"
+                className="w-full border rounded p-3 bg-white outline-none focus:border-brand-primary text-sm font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-brand-secondary/65 uppercase block">Confirm New Password *</label>
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repeat new password"
+                className="w-full border rounded p-3 bg-white outline-none focus:border-brand-primary text-sm font-semibold"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingPassword}
+              className="w-full h-12 flex items-center justify-center gap-2 bg-brand-secondary hover:bg-brand-primary text-white font-bold text-xs tracking-widest rounded transition"
+            >
+              {savingPassword ? <Loader2 className="animate-spin" size={14} /> : <Key size={14} />}
+              UPDATE PASSWORD
+            </button>
+          </form>
+        </div>
+      ) : activeTab === 'users' && isSuperOrAdmin ? (
         /* 1. Admins Directory Tab */
         <div className="bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm">
           <h4 className="font-serif text-lg font-bold mb-6">User Accounts Directory</h4>
@@ -423,7 +609,7 @@ export default function SettingsAndLogsPage() {
             </table>
           </div>
         </div>
-      ) : activeTab === 'bank' ? (
+      ) : activeTab === 'bank' && isSuperOrAdmin ? (
         /* 2. Bank Details Form Tab */
         <form onSubmit={handleSaveBankDetails} className="max-w-lg bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-5 text-xs font-bold">
           <h4 className="font-serif text-lg font-bold">Checkout Bank Account Setup</h4>
@@ -504,7 +690,7 @@ export default function SettingsAndLogsPage() {
             SAVE SETTINGS
           </button>
         </form>
-      ) : activeTab === 'contact' ? (
+      ) : activeTab === 'contact' && isSuperOrAdmin ? (
         /* 3. Contact Info Tab */
         <form onSubmit={handleSaveContactInfo} className="max-w-lg bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-5 text-xs font-bold">
           <h4 className="font-serif text-lg font-bold">Store Contact Information</h4>
@@ -573,7 +759,7 @@ export default function SettingsAndLogsPage() {
             SAVE CONTACT INFO
           </button>
         </form>
-      ) : activeTab === 'audits' ? (
+      ) : activeTab === 'audits' && isSuperOrAdmin ? (
         /* 3. Audit Logs Tab */
         <div className="bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm">
           <h4 className="font-serif text-lg font-bold mb-6">Activity Compliance Audit Logs</h4>
@@ -615,7 +801,7 @@ export default function SettingsAndLogsPage() {
             </table>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'system' && isSuperOrAdmin ? (
         /* 4. System Control Tab */
         <div className="max-w-xl bg-white p-6 border border-brand-primary-light/10 rounded shadow-sm space-y-6">
           <h4 className="font-serif text-lg font-bold text-brand-secondary">System Controls</h4>
@@ -686,7 +872,7 @@ export default function SettingsAndLogsPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Action Confirmation Modal */}
       <ConfirmModal
